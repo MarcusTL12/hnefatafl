@@ -36,8 +36,8 @@ impl Display for BoardState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (row, c) in self
             .0
-            .into_iter()
-            .array_chunks::<2>()
+            .nbits_iter::<2>()
+            .map(|x| Piece::try_from(x).unwrap())
             .take(121)
             .array_chunks::<11>()
             .enumerate()
@@ -64,10 +64,10 @@ impl Display for BoardState {
                 })?;
 
                 write!(f, "{}", match x {
-                    [false, false] => "   ",
-                    [true, false] => " \x1b[1mᛝ\x1b[0m ",
-                    [false, true] => " ◯ ",
-                    [true, true] => " ⬤ ",
+                    Piece::Empty => "   ",
+                    Piece::King => " \x1b[1mᛝ\x1b[0m ",
+                    Piece::Black => " ◯ ",
+                    Piece::White => " ⬤ ",
                 })?;
             }
 
