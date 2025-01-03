@@ -1,8 +1,11 @@
 #![feature(iter_array_chunks)]
 
-use std::fmt::Display;
+use std::{fmt::Display, io::stdout};
 
 use bitarray::BitArray;
+use crossterm::{
+    cursor, event::{self, EnableMouseCapture, Event, KeyCode, KeyEvent}, terminal::{self, EnterAlternateScreen, LeaveAlternateScreen}, ExecutableCommand
+};
 
 const W: usize = 11;
 
@@ -161,5 +164,25 @@ impl BoardState {
 fn main() {
     let state = BoardState::standard_setup();
 
+    stdout().execute(EnableMouseCapture).unwrap();
+    stdout().execute(EnterAlternateScreen).unwrap();
+    stdout().execute(cursor::MoveTo(0, 0)).unwrap();
+
     println!("{state}");
+
+    while let Ok(x) = event::read() {
+        println!("{x:?}");
+
+        if let Event::Key(KeyEvent {
+            code: KeyCode::Char('q'),
+            modifiers: _,
+            kind: _,
+            state: _,
+        }) = x
+        {
+            break;
+        }
+    }
+
+    stdout().execute(LeaveAlternateScreen).unwrap();
 }
