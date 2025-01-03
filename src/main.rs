@@ -22,9 +22,9 @@ impl Display for BoardState {
             let mut first_col = true;
 
             if first_row {
-                writeln!(f, "╔═╤═╤═╤═╤═╤═╤═╤═╤═╤═╤═╗")?;
+                writeln!(f, "╔═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╗")?;
             } else {
-                writeln!(f, "╟─┼─┼─┼─┼─┼─┼─┼─┼─┼─┼─╢")?;
+                writeln!(f, "╟───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───╢")?;
             }
 
             for x in c {
@@ -35,11 +35,10 @@ impl Display for BoardState {
                 }
 
                 write!(f, "{}", match x {
-                    [false, false] => " ",
-                    [true, false] => "♔",
-                    [false, true] => "♟",
-                    [true, true] => "♙",
-                    _ => panic!(),
+                    [false, false] => "   ",
+                    [true, false] => " ♛ ",
+                    [false, true] => " ◯ ",
+                    [true, true] => " ⬤ ",
                 })?;
 
                 first_col = false;
@@ -50,12 +49,21 @@ impl Display for BoardState {
             first_row = false;
         }
 
-        writeln!(f, "╚═╧═╧═╧═╧═╧═╧═╧═╧═╧═╧═╝")
+        writeln!(f, "╚═══╧═══╧═══╧═══╧═══╧═══╧═══╧═══╧═══╧═══╧═══╝")
     }
 }
 
 fn main() {
-    let state = BoardState(BitArray::new());
+    let mut state = BoardState(BitArray::new());
+
+    state.0.set(6, true);
+    state.0.set(7, false);
+
+    state.0.set(14, false);
+    state.0.set(15, true);
+
+    state.0.set(50, true);
+    state.0.set(51, true);
 
     println!("{state}");
 }
