@@ -5,8 +5,11 @@ use std::{fmt::Display, io::stdout};
 use bitarray::BitArray;
 use crossterm::{
     ExecutableCommand, cursor,
-    event::{self, EnableMouseCapture, Event, KeyCode, KeyEvent},
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen},
+    event::{
+        self, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
+        MouseButton, MouseEvent, MouseEventKind,
+    },
+    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
 };
 
 const W: usize = 11;
@@ -164,26 +167,56 @@ impl BoardState {
     }
 }
 
+fn screen_coord_to_game_coord([y, x]: [u16; 2]) -> Option<[u16; 2]> {
+    let row = y.checked_sub(4)? / 2;
+    if y <= 24 && y % 2 != 0 {
+        return None;
+    }
+
+    let col = x.checked_sub(7)? / 4;
+    if col < 11 && x % 4 == 2 {
+        return None;
+    }
+
+    Some([row, col])
+}
+
 fn main() {
     let state = BoardState::standard_setup();
 
-    stdout().execute(EnableMouseCapture).unwrap();
-    stdout().execute(EnterAlternateScreen).unwrap();
-    stdout().execute(cursor::MoveTo(0, 0)).unwrap();
+    let mut out = stdout();
+
+    out.execute(EnableMouseCapture).unwrap();
+    out.execute(EnterAlternateScreen).unwrap();
+    out.execute(cursor::MoveTo(0, 0)).unwrap();
 
     println!("{state}");
 
     while let Ok(x) = event::read() {
-        println!("{x:?}");
-
-        if let Event::Key(KeyEvent {
-            code: KeyCode::Char('q'),
-            modifiers: _,
-            kind: _,
-            state: _,
-        }) = x
-        {
-            break;
+        match x {
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('q'),
+                modifiers: _,
+                kind: _,
+                state: _,
+            }) => break,
+            Event::Mouse(MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column,
+                row,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                out.execute(cursor::MoveTo(0, 27)).unwrap();
+                out.execute(terminal::Clear(terminal::ClearType::CurrentLine))
+                    .unwrap();
+                out.execute(cursor::MoveUp(1)).unwrap();
+                out.execute(terminal::Clear(terminal::ClearType::CurrentLine))
+                    .unwrap();
+                println!("You pressed on coord: {row}, {column}");
+                let coord = screen_coord_to_game_coord([row, column]);
+                println!("Ingame coord: {coord:?}");
+            }
+            _ => {}
         }
     }
 
