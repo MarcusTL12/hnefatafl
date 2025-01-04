@@ -4,7 +4,9 @@ use std::{fmt::Display, io::stdout};
 
 use bitarray::BitArray;
 use crossterm::{
-    cursor, event::{self, EnableMouseCapture, Event, KeyCode, KeyEvent}, terminal::{self, EnterAlternateScreen, LeaveAlternateScreen}, ExecutableCommand
+    ExecutableCommand, cursor,
+    event::{self, EnableMouseCapture, Event, KeyCode, KeyEvent},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 
 const W: usize = 11;
@@ -37,6 +39,10 @@ struct BoardState(pub BitArray<N>);
 
 impl Display for BoardState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "      ┏━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┓")?;
+        writeln!(f, "      ┃ A ┃ B ┃ C ┃ D ┃ E ┃ F ┃ G ┃ H ┃ I ┃ J ┃ K ┃")?;
+        writeln!(f, "      ┗━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┛")?;
+
         for (row, c) in self
             .0
             .nbits_iter::<2>()
@@ -46,25 +52,22 @@ impl Display for BoardState {
             .enumerate()
         {
             writeln!(f, "{}", match row {
-                0 => "┏━━━┳━━━┯━━━┯━━━┯━━━┯━━━┯━━━┯━━━┯━━━┯━━━┳━━━┓",
-                1 => "┣━━━╃───┼───┼───┼───┼───┼───┼───┼───┼───╄━━━┫",
-                10 => "┣━━━╅───┼───┼───┼───┼───┼───┼───┼───┼───╆━━━┫",
-                5 => "┠───┼───┼───┼───┼───╆━━━╅───┼───┼───┼───┼───┨",
-                6 => "┠───┼───┼───┼───┼───╄━━━╃───┼───┼───┼───┼───┨",
-                _ => "┠───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┨",
+                0 => "┏━━━┓ ┏━━━┳━━━┯━━━┯━━━┯━━━┯━━━┯━━━┯━━━┯━━━┯━━━┳━━━┓",
+                1 => "┣━━━┫ ┣━━━╃───┼───┼───┼───┼───┼───┼───┼───┼───╄━━━┫",
+                10 => "┣━━━┫ ┣━━━╅───┼───┼───┼───┼───┼───┼───┼───┼───╆━━━┫",
+                5 => "┣━━━┫ ┠───┼───┼───┼───┼───╆━━━╅───┼───┼───┼───┼───┨",
+                6 => "┣━━━┫ ┠───┼───┼───┼───┼───╄━━━╃───┼───┼───┼───┼───┨",
+                _ => "┣━━━┫ ┠───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┨",
             })?;
 
             for (col, x) in c.into_iter().enumerate() {
-                write!(f, "{}", match [row, col] {
-                    [_, 0]
-                    | [0, 1]
-                    | [0, 10]
-                    | [10, 1]
-                    | [10, 10]
-                    | [5, 5]
-                    | [5, 6] => "┃",
-                    _ => "│",
-                })?;
+                match [row, col] {
+                    [0, 1] | [0, 10] | [10, 1] | [10, 10] | [5, 5] | [5, 6] => {
+                        write!(f, "┃")?
+                    }
+                    [_, 0] => write!(f, "┃{:2} ┃ ┃", row + 1)?,
+                    _ => write!(f, "│")?,
+                };
 
                 write!(f, "{}", match x {
                     Piece::Empty => "   ",
@@ -77,7 +80,7 @@ impl Display for BoardState {
             writeln!(f, "┃")?;
         }
 
-        writeln!(f, "┗━━━┻━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┻━━━┛")
+        writeln!(f, "┗━━━┛ ┗━━━┻━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┻━━━┛")
     }
 }
 
