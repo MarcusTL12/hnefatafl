@@ -1,6 +1,6 @@
 #![feature(iter_array_chunks)]
 
-use std::{fmt::Display, io::stdout};
+use std::{fmt::Display, io::stdout, pin};
 
 use bitarray::BitArray;
 use crossterm::{
@@ -9,6 +9,8 @@ use crossterm::{
         self, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
         MouseButton, MouseEvent, MouseEventKind,
     },
+    execute,
+    style::Stylize,
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
 };
 
@@ -42,48 +44,7 @@ struct BoardState(pub BitArray<N>);
 
 impl Display for BoardState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "      ┏━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┓")?;
-        writeln!(f, "      ┃ A ┃ B ┃ C ┃ D ┃ E ┃ F ┃ G ┃ H ┃ I ┃ J ┃ K ┃")?;
-        writeln!(f, "      ┗━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┛")?;
-
-        for (row, c) in self
-            .0
-            .nbits_iter::<2>()
-            .map(|x| Piece::try_from(x).unwrap())
-            .take(121)
-            .array_chunks::<11>()
-            .enumerate()
-        {
-            writeln!(f, "{}", match row {
-                0 => "┏━━━┓ ┏━━━┳━━━┯━━━┯━━━┯━━━┯━━━┯━━━┯━━━┯━━━┯━━━┳━━━┓",
-                1 => "┣━━━┫ ┣━━━╃───┼───┼───┼───┼───┼───┼───┼───┼───╄━━━┫",
-                10 => "┣━━━┫ ┣━━━╅───┼───┼───┼───┼───┼───┼───┼───┼───╆━━━┫",
-                5 => "┣━━━┫ ┠───┼───┼───┼───┼───╆━━━╅───┼───┼───┼───┼───┨",
-                6 => "┣━━━┫ ┠───┼───┼───┼───┼───╄━━━╃───┼───┼───┼───┼───┨",
-                _ => "┣━━━┫ ┠───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┨",
-            })?;
-
-            for (col, x) in c.into_iter().enumerate() {
-                match [row, col] {
-                    [0, 1] | [0, 10] | [10, 1] | [10, 10] | [5, 5] | [5, 6] => {
-                        write!(f, "┃")?
-                    }
-                    [_, 0] => write!(f, "┃{:2} ┃ ┃", row + 1)?,
-                    _ => write!(f, "│")?,
-                };
-
-                write!(f, "{}", match x {
-                    Piece::Empty => "   ",
-                    Piece::King => " \x1b[1mᛝ\x1b[0m ",
-                    Piece::Black => " ◯ ",
-                    Piece::White => " ⬤ ",
-                })?;
-            }
-
-            writeln!(f, "┃")?;
-        }
-
-        writeln!(f, "┗━━━┛ ┗━━━┻━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┻━━━┛")
+        self.render(f, &[])
     }
 }
 
@@ -165,6 +126,86 @@ impl BoardState {
     fn set_xy(&mut self, [y, x]: [usize; 2], val: Piece) {
         self.set(x + y * W, val)
     }
+
+    fn render(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+        highlights: &[[u16; 2]],
+    ) -> std::fmt::Result {
+        writeln!(f, "      ┏━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┓")?;
+        writeln!(f, "      ┃ A ┃ B ┃ C ┃ D ┃ E ┃ F ┃ G ┃ H ┃ I ┃ J ┃ K ┃")?;
+        writeln!(f, "      ┗━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┛")?;
+
+        for (row, c) in self
+            .0
+            .nbits_iter::<2>()
+            .map(|x| Piece::try_from(x).unwrap())
+            .take(121)
+            .array_chunks::<11>()
+            .enumerate()
+        {
+            writeln!(f, "{}", match row {
+                0 => "┏━━━┓ ┏━━━┳━━━┯━━━┯━━━┯━━━┯━━━┯━━━┯━━━┯━━━┯━━━┳━━━┓",
+                1 => "┣━━━┫ ┣━━━╃───┼───┼───┼───┼───┼───┼───┼───┼───╄━━━┫",
+                10 => "┣━━━┫ ┣━━━╅───┼───┼───┼───┼───┼───┼───┼───┼───╆━━━┫",
+                5 => "┣━━━┫ ┠───┼───┼───┼───┼───╆━━━╅───┼───┼───┼───┼───┨",
+                6 => "┣━━━┫ ┠───┼───┼───┼───┼───╄━━━╃───┼───┼───┼───┼───┨",
+                _ => "┣━━━┫ ┠───┼───┼───┼───┼───┼───┼───┼───┼───┼───┼───┨",
+            })?;
+
+            for (col, x) in c.into_iter().enumerate() {
+                match [row, col] {
+                    [0, 1] | [0, 10] | [10, 1] | [10, 10] | [5, 5] | [5, 6] => {
+                        write!(f, "┃")?
+                    }
+                    [_, 0] => write!(f, "┃{:2} ┃ ┃", row + 1)?,
+                    _ => write!(f, "│")?,
+                };
+
+                let highlight = highlights.contains(&[row as u16, col as u16]);
+
+                if highlight {
+                    write!(f, "{}", "▐".dark_grey())?;
+                } else {
+                    write!(f, " ")?;
+                }
+
+                let piece = match x {
+                    Piece::Empty => " ",
+                    Piece::King => "\x1b[1mᛝ\x1b[0m",
+                    Piece::Black => "◯",
+                    Piece::White => "⬤",
+                };
+
+                if highlight {
+                    write!(f, "{}", piece.on_dark_grey())?;
+                } else {
+                    write!(f, "{}", piece)?;
+                }
+
+                if highlight {
+                    write!(f, "{}", "▌".dark_grey())?;
+                } else {
+                    write!(f, " ")?;
+                }
+            }
+
+            writeln!(f, "┃")?;
+        }
+
+        writeln!(f, "┗━━━┛ ┗━━━┻━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┻━━━┛")
+    }
+}
+
+struct HighlightedBoardState {
+    pub state: BoardState,
+    pub highlights: Vec<[u16; 2]>,
+}
+
+impl Display for HighlightedBoardState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.state.render(f, &self.highlights)
+    }
 }
 
 fn screen_coord_to_game_coord([y, x]: [u16; 2]) -> Option<[u16; 2]> {
@@ -184,13 +225,22 @@ fn screen_coord_to_game_coord([y, x]: [u16; 2]) -> Option<[u16; 2]> {
 fn main() {
     let state = BoardState::standard_setup();
 
+    let mut hstate = HighlightedBoardState {
+        state,
+        highlights: Vec::new(),
+    };
+
     let mut out = stdout();
 
-    out.execute(EnableMouseCapture).unwrap();
-    out.execute(EnterAlternateScreen).unwrap();
-    out.execute(cursor::MoveTo(0, 0)).unwrap();
+    execute!(
+        out,
+        EnableMouseCapture,
+        EnterAlternateScreen,
+        cursor::MoveTo(0, 0)
+    )
+    .unwrap();
 
-    println!("{state}");
+    println!("{hstate}");
 
     while let Ok(x) = event::read() {
         match x {
@@ -206,14 +256,22 @@ fn main() {
                 row,
                 modifiers: KeyModifiers::NONE,
             }) => {
-                out.execute(cursor::MoveTo(0, 27)).unwrap();
-                out.execute(terminal::Clear(terminal::ClearType::CurrentLine))
-                    .unwrap();
-                out.execute(cursor::MoveUp(1)).unwrap();
-                out.execute(terminal::Clear(terminal::ClearType::CurrentLine))
-                    .unwrap();
-                println!("You pressed on coord: {row}, {column}");
+                execute!(
+                    out,
+                    cursor::MoveUp(1),
+                    terminal::Clear(terminal::ClearType::CurrentLine),
+                    cursor::MoveUp(1),
+                    terminal::Clear(terminal::ClearType::CurrentLine),
+                    cursor::MoveTo(0, 0),
+                )
+                .unwrap();
+
                 let coord = screen_coord_to_game_coord([row, column]);
+                if let Some(coord) = coord {
+                    hstate.highlights.push(coord);
+                }
+                println!("{hstate}");
+                println!("You pressed on coord: {row}, {column}");
                 println!("Ingame coord: {coord:?}");
             }
             _ => {}
