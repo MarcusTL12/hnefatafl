@@ -19,6 +19,8 @@ const W: usize = 11;
 const N: usize = (2 * W * W).div_ceil(usize::BITS as usize);
 const M: usize = (W * W).div_ceil(usize::BITS as usize);
 
+const TOWERS: BitArray<M> = BitArray([1152921504606848001, 72127962782105600]);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Piece {
     Empty = 0,
@@ -245,7 +247,7 @@ impl BoardState {
         writeln!(f, "┗━━━┛ ┗━━━┻━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┻━━━┛")
     }
 
-    fn highlight(self, highlights: &[[u16; 2]]) -> HighlightedBoardState {
+    fn _highlight(self, highlights: &[[u16; 2]]) -> HighlightedBoardState {
         let mut b = BitArray::new();
         for &coord in highlights {
             b.set(to_linind(coord), true);
@@ -291,8 +293,14 @@ impl BoardState {
         if self.get_2d([y, x]) == Piece::King {
             moves
         } else {
-            moves & !BitArray([1152921504606848001, 72127962782105600])
+            moves & !TOWERS
         }
+    }
+
+    fn do_move(&mut self, from: [u16; 2], to: [u16; 2]) {
+        let piece = self.get_2d(from);
+        self.set_2d(from, Piece::Empty);
+        self.set_2d(to, piece);
     }
 }
 
@@ -319,12 +327,12 @@ fn screen_coord_to_game_coord([y, x]: [u16; 2]) -> Option<[u16; 2]> {
 }
 
 fn main() {
-    let board = BoardState::standard_setup();
+    let mut board = BoardState::standard_setup();
 
     let mut selected = None;
     let mut legal_moves = BitArray::new();
 
-    let turn = Faction::Black;
+    let mut turn = Faction::Black;
 
     let mut out = stdout();
 
@@ -364,6 +372,12 @@ fn main() {
 
                     execute!(out, cursor::MoveTo(0, 0)).unwrap();
                     println!("{}", HighlightedBoardState(board, legal_moves));
+                } else if legal_moves[to_linind(coord)] {
+                    board.do_move(selected.unwrap(), coord);
+                    turn = turn.other_faction();
+
+                    execute!(out, cursor::MoveTo(0, 0)).unwrap();
+                    println!("{board}");
                 }
             }
             Event::Mouse(MouseEvent {
@@ -374,6 +388,8 @@ fn main() {
             }) => {
                 if selected.is_some() {
                     selected = None;
+
+                    legal_moves = BitArray::new();
 
                     execute!(out, cursor::MoveTo(0, 0)).unwrap();
                     println!("{board}");
