@@ -172,10 +172,11 @@ impl BoardState {
 
                 let piece = match x {
                     Piece::Empty => " ",
-                    Piece::King => "\x1b[1mᛝ\x1b[0m",
+                    Piece::King => "ᛝ",
                     Piece::Black => "◯",
                     Piece::White => "⬤",
-                };
+                }
+                .bold();
 
                 if highlight {
                     write!(f, "{}", piece.on_dark_grey())?;
