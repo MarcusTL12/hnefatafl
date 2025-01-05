@@ -16,14 +16,21 @@ use crossterm::{
 
 const W: usize = 11;
 
-const N: usize = 256usize.div_ceil(usize::BITS as usize);
+const N: usize = (2 * W * W).div_ceil(usize::BITS as usize);
+const M: usize = (W * W).div_ceil(usize::BITS as usize);
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Piece {
     Empty = 0,
     King,
     Black,
     White,
+}
+
+impl Piece {
+    fn is_empty(self) -> bool {
+        self == Piece::Empty
+    }
 }
 
 impl TryFrom<usize> for Piece {
@@ -72,8 +79,19 @@ struct BoardState(pub BitArray<N>);
 
 impl Display for BoardState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.render(f, &[])
+        self.render(f, BitArray::new())
     }
+}
+
+fn _to_2d(i: usize) -> [u16; 2] {
+    let y = (i / W) as u16;
+    let x = (i % W) as u16;
+
+    [y, x]
+}
+
+fn to_linind([y, x]: [u16; 2]) -> usize {
+    x as usize + y as usize * W
 }
 
 impl BoardState {
@@ -148,17 +166,17 @@ impl BoardState {
     }
 
     fn get_2d(&self, [y, x]: [u16; 2]) -> Piece {
-        self.get(x as usize + y as usize * W)
+        self.get(to_linind([y, x]))
     }
 
     fn set_2d(&mut self, [y, x]: [u16; 2], val: Piece) {
-        self.set(x as usize + y as usize * W, val)
+        self.set(to_linind([y, x]), val)
     }
 
     fn render(
         &self,
         f: &mut std::fmt::Formatter<'_>,
-        highlights: &[[u16; 2]],
+        highlights: BitArray<M>,
     ) -> std::fmt::Result {
         writeln!(f, "      ┏━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┓")?;
         writeln!(f, "      ┃ A ┃ B ┃ C ┃ D ┃ E ┃ F ┃ G ┃ H ┃ I ┃ J ┃ K ┃")?;
@@ -190,7 +208,9 @@ impl BoardState {
                     _ => write!(f, "│")?,
                 };
 
-                let highlight = highlights.contains(&[row as u16, col as u16]);
+                let highlight = highlights
+                    .get(to_linind([row as u16, col as u16]))
+                    .unwrap();
 
                 if highlight {
                     write!(f, "{}", "▐".dark_grey())?;
@@ -225,14 +245,66 @@ impl BoardState {
         writeln!(f, "┗━━━┛ ┗━━━┻━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┻━━━┛")
     }
 
-    fn highlight(self, highlights: &[[u16; 2]]) -> HighlightedBoardState<'_> {
-        HighlightedBoardState(self, highlights)
+    fn highlight(self, highlights: &[[u16; 2]]) -> HighlightedBoardState {
+        let mut b = BitArray::new();
+        for &coord in highlights {
+            b.set(to_linind(coord), true);
+        }
+        HighlightedBoardState(self, b)
+    }
+
+    fn moves_from(&self, [y, x]: [u16; 2]) -> BitArray<M> {
+        let mut moves = BitArray::new();
+
+        for x in x + 1..11 {
+            if self.get_2d([y, x]).is_empty() {
+                moves.set(to_linind([y, x]), true);
+            } else {
+                break;
+            }
+        }
+
+        for x in (0..x).rev() {
+            if self.get_2d([y, x]).is_empty() {
+                moves.set(to_linind([y, x]), true);
+            } else {
+                break;
+            }
+        }
+
+        for y in y + 1..11 {
+            if self.get_2d([y, x]).is_empty() {
+                moves.set(to_linind([y, x]), true);
+            } else {
+                break;
+            }
+        }
+
+        for y in (0..y).rev() {
+            if self.get_2d([y, x]).is_empty() {
+                moves.set(to_linind([y, x]), true);
+            } else {
+                break;
+            }
+        }
+
+        let mut towers = BitArray::new();
+
+        for coord in [[0, 0], [10, 0], [0, 10], [10, 10], [5, 5]] {
+            towers.set(to_linind(coord), true);
+        }
+
+        if self.get_2d([y, x]) == Piece::King {
+            moves
+        } else {
+            moves & !towers
+        }
     }
 }
 
-struct HighlightedBoardState<'a>(BoardState, &'a [[u16; 2]]);
+struct HighlightedBoardState(BoardState, BitArray<M>);
 
-impl Display for HighlightedBoardState<'_> {
+impl Display for HighlightedBoardState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.render(f, self.1)
     }
@@ -256,6 +328,8 @@ fn main() {
     let board = BoardState::standard_setup();
 
     let mut selected = None;
+    let mut legal_moves = BitArray::new();
+
     let turn = Faction::Black;
 
     let mut out = stdout();
@@ -289,13 +363,13 @@ fn main() {
                     continue;
                 };
 
-                if selected.is_none()
-                    && board.get_2d(coord).try_into() == Ok(turn)
-                {
+                if board.get_2d(coord).try_into() == Ok(turn) {
                     selected = Some(coord);
 
+                    legal_moves = board.moves_from(coord);
+
                     execute!(out, cursor::MoveTo(0, 0)).unwrap();
-                    println!("{}", board.highlight(&[coord]));
+                    println!("{}", HighlightedBoardState(board, legal_moves));
                 }
             }
             Event::Mouse(MouseEvent {
