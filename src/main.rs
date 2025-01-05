@@ -92,8 +92,12 @@ fn _to_2d(i: usize) -> [u16; 2] {
     [y, x]
 }
 
-fn to_linind([y, x]: [u16; 2]) -> usize {
-    x as usize + y as usize * W
+fn to_linind([y, x]: [u16; 2]) -> Option<usize> {
+    if x as usize >= W || y as usize >= W {
+        return None;
+    }
+
+    Some(x as usize + y as usize * W)
 }
 
 impl BoardState {
@@ -167,12 +171,12 @@ impl BoardState {
         self.0.set_nbit::<2>(i, val as usize)
     }
 
-    fn get_2d(&self, [y, x]: [u16; 2]) -> Piece {
-        self.get(to_linind([y, x]))
+    fn get_2d(&self, [y, x]: [u16; 2]) -> Option<Piece> {
+        Some(self.get(to_linind([y, x])?))
     }
 
     fn set_2d(&mut self, [y, x]: [u16; 2], val: Piece) {
-        self.set(to_linind([y, x]), val)
+        self.set(to_linind([y, x]).unwrap(), val)
     }
 
     fn render(
@@ -211,7 +215,7 @@ impl BoardState {
                 };
 
                 let highlight = highlights
-                    .get(to_linind([row as u16, col as u16]))
+                    .get(to_linind([row as u16, col as u16]).unwrap())
                     .unwrap();
 
                 if highlight {
@@ -250,7 +254,7 @@ impl BoardState {
     fn _highlight(self, highlights: &[[u16; 2]]) -> HighlightedBoardState {
         let mut b = BitArray::new();
         for &coord in highlights {
-            b.set(to_linind(coord), true);
+            b.set(to_linind(coord).unwrap(), true);
         }
         HighlightedBoardState(self, b)
     }
@@ -259,38 +263,38 @@ impl BoardState {
         let mut moves = BitArray::new();
 
         for x in x + 1..11 {
-            if self.get_2d([y, x]).is_empty() {
-                moves.set(to_linind([y, x]), true);
+            if self.get_2d([y, x]).unwrap().is_empty() {
+                moves.set(to_linind([y, x]).unwrap(), true);
             } else {
                 break;
             }
         }
 
         for x in (0..x).rev() {
-            if self.get_2d([y, x]).is_empty() {
-                moves.set(to_linind([y, x]), true);
+            if self.get_2d([y, x]).unwrap().is_empty() {
+                moves.set(to_linind([y, x]).unwrap(), true);
             } else {
                 break;
             }
         }
 
         for y in y + 1..11 {
-            if self.get_2d([y, x]).is_empty() {
-                moves.set(to_linind([y, x]), true);
+            if self.get_2d([y, x]).unwrap().is_empty() {
+                moves.set(to_linind([y, x]).unwrap(), true);
             } else {
                 break;
             }
         }
 
         for y in (0..y).rev() {
-            if self.get_2d([y, x]).is_empty() {
-                moves.set(to_linind([y, x]), true);
+            if self.get_2d([y, x]).unwrap().is_empty() {
+                moves.set(to_linind([y, x]).unwrap(), true);
             } else {
                 break;
             }
         }
 
-        if self.get_2d([y, x]) == Piece::King {
+        if self.get_2d([y, x]) == Some(Piece::King) {
             moves
         } else {
             moves & !TOWERS
@@ -298,9 +302,11 @@ impl BoardState {
     }
 
     fn do_move(&mut self, from: [u16; 2], to: [u16; 2]) {
-        let piece = self.get_2d(from);
+        let piece = self.get_2d(from).unwrap();
         self.set_2d(from, Piece::Empty);
         self.set_2d(to, piece);
+
+        // Capture detection:
     }
 }
 
@@ -365,14 +371,16 @@ fn main() {
                     continue;
                 };
 
-                if board.get_2d(coord).try_into() == Ok(turn) {
+                if board.get_2d(coord).and_then(|x| x.try_into().ok())
+                    == Some(turn)
+                {
                     selected = Some(coord);
 
                     legal_moves = board.moves_from(coord);
 
                     execute!(out, cursor::MoveTo(0, 0)).unwrap();
                     println!("{}", HighlightedBoardState(board, legal_moves));
-                } else if legal_moves[to_linind(coord)] {
+                } else if legal_moves[to_linind(coord).unwrap()] {
                     board.do_move(selected.unwrap(), coord);
                     turn = turn.other_faction();
 
