@@ -1,6 +1,6 @@
 #![feature(iter_array_chunks)]
 
-use std::{fmt::Display, io::stdout, pin};
+use std::{fmt::Display, io::stdout};
 
 use bitarray::BitArray;
 use crossterm::{
@@ -11,7 +11,7 @@ use crossterm::{
     },
     execute,
     style::Stylize,
-    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 
 const W: usize = 11;
@@ -40,6 +40,34 @@ impl TryFrom<usize> for Piece {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Faction {
+    White,
+    Black,
+}
+
+impl TryFrom<Piece> for Faction {
+    type Error = &'static str;
+
+    fn try_from(value: Piece) -> Result<Self, Self::Error> {
+        match value {
+            Piece::Empty => Err("Empty piece"),
+            Piece::White | Piece::King => Ok(Self::White),
+            Piece::Black => Ok(Self::Black),
+        }
+    }
+}
+
+impl Faction {
+    fn other_faction(&self) -> Self {
+        match self {
+            Self::White => Self::Black,
+            Self::Black => Self::White,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 struct BoardState(pub BitArray<N>);
 
 impl Display for BoardState {
@@ -84,7 +112,7 @@ impl BoardState {
         ];
 
         for pos in black_pieces {
-            state.set_xy(pos, Piece::Black);
+            state.set_2d(pos, Piece::Black);
         }
 
         let white_pieces = [
@@ -103,10 +131,10 @@ impl BoardState {
         ];
 
         for pos in white_pieces {
-            state.set_xy(pos, Piece::White);
+            state.set_2d(pos, Piece::White);
         }
 
-        state.set_xy([5, 5], Piece::King);
+        state.set_2d([5, 5], Piece::King);
 
         state
     }
@@ -119,12 +147,12 @@ impl BoardState {
         self.0.set_nbit::<2>(i, val as usize)
     }
 
-    fn get_xy(&self, [y, x]: [usize; 2]) -> Piece {
-        self.get(x + y * W)
+    fn get_2d(&self, [y, x]: [u16; 2]) -> Piece {
+        self.get(x as usize + y as usize * W)
     }
 
-    fn set_xy(&mut self, [y, x]: [usize; 2], val: Piece) {
-        self.set(x + y * W, val)
+    fn set_2d(&mut self, [y, x]: [u16; 2], val: Piece) {
+        self.set(x as usize + y as usize * W, val)
     }
 
     fn render(
@@ -196,16 +224,17 @@ impl BoardState {
 
         writeln!(f, "┗━━━┛ ┗━━━┻━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┷━━━┻━━━┛")
     }
+
+    fn highlight(self, highlights: &[[u16; 2]]) -> HighlightedBoardState<'_> {
+        HighlightedBoardState(self, highlights)
+    }
 }
 
-struct HighlightedBoardState {
-    pub state: BoardState,
-    pub highlights: Vec<[u16; 2]>,
-}
+struct HighlightedBoardState<'a>(BoardState, &'a [[u16; 2]]);
 
-impl Display for HighlightedBoardState {
+impl Display for HighlightedBoardState<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.state.render(f, &self.highlights)
+        self.0.render(f, self.1)
     }
 }
 
@@ -224,12 +253,10 @@ fn screen_coord_to_game_coord([y, x]: [u16; 2]) -> Option<[u16; 2]> {
 }
 
 fn main() {
-    let state = BoardState::standard_setup();
+    let board = BoardState::standard_setup();
 
-    let mut hstate = HighlightedBoardState {
-        state,
-        highlights: Vec::new(),
-    };
+    let mut selected = None;
+    let turn = Faction::Black;
 
     let mut out = stdout();
 
@@ -241,7 +268,7 @@ fn main() {
     )
     .unwrap();
 
-    println!("{hstate}");
+    println!("{board}");
 
     while let Ok(x) = event::read() {
         match x {
@@ -257,23 +284,32 @@ fn main() {
                 row,
                 modifiers: KeyModifiers::NONE,
             }) => {
-                execute!(
-                    out,
-                    cursor::MoveUp(1),
-                    terminal::Clear(terminal::ClearType::CurrentLine),
-                    cursor::MoveUp(1),
-                    terminal::Clear(terminal::ClearType::CurrentLine),
-                    cursor::MoveTo(0, 0),
-                )
-                .unwrap();
+                let Some(coord) = screen_coord_to_game_coord([row, column])
+                else {
+                    continue;
+                };
 
-                let coord = screen_coord_to_game_coord([row, column]);
-                if let Some(coord) = coord {
-                    hstate.highlights.push(coord);
+                if selected.is_none()
+                    && board.get_2d(coord).try_into() == Ok(turn)
+                {
+                    selected = Some(coord);
+
+                    execute!(out, cursor::MoveTo(0, 0)).unwrap();
+                    println!("{}", board.highlight(&[coord]));
                 }
-                println!("{hstate}");
-                println!("You pressed on coord: {row}, {column}");
-                println!("Ingame coord: {coord:?}");
+            }
+            Event::Mouse(MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Right),
+                column: _,
+                row: _,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                if selected.is_some() {
+                    selected = None;
+
+                    execute!(out, cursor::MoveTo(0, 0)).unwrap();
+                    println!("{board}");
+                }
             }
             _ => {}
         }
