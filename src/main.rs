@@ -288,16 +288,13 @@ impl BoardState {
             }
         }
 
-        let mut towers = BitArray::new();
-
-        for coord in [[0, 0], [10, 0], [0, 10], [10, 10], [5, 5]] {
-            towers.set(to_linind(coord), true);
-        }
+        const TOWERS: BitArray<M> =
+            BitArray([1152921504606848001, 72127962782105600]);
 
         if self.get_2d([y, x]) == Piece::King {
             moves
         } else {
-            moves & !towers
+            moves & !TOWERS
         }
     }
 }

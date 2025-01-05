@@ -11,7 +11,7 @@ checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 [[package]]
 name = "bitarray"
 version = "0.1.0"
-source = "git+https://github.com/MarcusTL12/bitarray_rs#7d65f0fe4d02d8596161043efff2ff415a92a7d2"
+source = "git+https://github.com/MarcusTL12/bitarray_rs#c29c2d34858b8f97d239baf407062c30d80125bc"
 
 [[package]]
 name = "bitflags"
