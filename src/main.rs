@@ -288,13 +288,10 @@ impl BoardState {
             }
         }
 
-        const TOWERS: BitArray<M> =
-            BitArray([1152921504606848001, 72127962782105600]);
-
         if self.get_2d([y, x]) == Piece::King {
             moves
         } else {
-            moves & !TOWERS
+            moves & !BitArray([1152921504606848001, 72127962782105600])
         }
     }
 }
