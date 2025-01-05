@@ -1,6 +1,6 @@
 #![feature(iter_array_chunks)]
 
-use std::{fmt::Display, io::stdout};
+use std::{fmt::Display, io::stdout, thread::sleep, time::Duration};
 
 use bitarray::BitArray;
 use crossterm::{
@@ -301,12 +301,58 @@ impl BoardState {
         }
     }
 
-    fn do_move(&mut self, from: [u16; 2], to: [u16; 2]) {
+    fn do_move(&mut self, from: [u16; 2], to: [u16; 2]) -> bool {
         let piece = self.get_2d(from).unwrap();
         self.set_2d(from, Piece::Empty);
         self.set_2d(to, piece);
 
+        if piece == Piece::King
+            && TOWERS[to_linind(to).unwrap()]
+            && to != [5, 5]
+        {
+            return true;
+        }
+
+        let cur_faction: Faction = piece.try_into().unwrap();
+
+        let dirs = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+
         // Capture detection:
+        for d in dirs {
+            let y = (to[0] as isize + d[0]) as u16;
+            let x = (to[1] as isize + d[1]) as u16;
+
+            if let Some(p) = self.get_2d([y, x]) {
+                if p.try_into() == Ok(cur_faction.other_faction()) {
+                    if p != Piece::King {
+                        let ny = (y as isize + d[0]) as u16;
+                        let nx = (x as isize + d[1]) as u16;
+
+                        if let Some(i) = to_linind([ny, nx]) {
+                            if TOWERS[i] && self.get(i) == Piece::Empty
+                                || self.get(i).try_into() == Ok(cur_faction)
+                            {
+                                self.set_2d([y, x], Piece::Empty);
+                            }
+                        }
+                    } else if dirs.into_iter().all(|d| {
+                        let ny = (y as isize + d[0]) as u16;
+                        let nx = (x as isize + d[1]) as u16;
+
+                        if let Some(i) = to_linind([ny, nx]) {
+                            TOWERS[i] && self.get(i) == Piece::Empty
+                                || self.get(i).try_into() == Ok(cur_faction)
+                        } else {
+                            false
+                        }
+                    }) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
     }
 }
 
@@ -320,12 +366,12 @@ impl Display for HighlightedBoardState {
 
 fn screen_coord_to_game_coord([y, x]: [u16; 2]) -> Option<[u16; 2]> {
     let row = y.checked_sub(4)? / 2;
-    if y <= 24 && y % 2 != 0 {
+    if y > 24 || y % 2 != 0 {
         return None;
     }
 
     let col = x.checked_sub(7)? / 4;
-    if col < 11 && x % 4 == 2 {
+    if col >= 11 || x % 4 == 2 {
         return None;
     }
 
@@ -381,11 +427,18 @@ fn main() {
                     execute!(out, cursor::MoveTo(0, 0)).unwrap();
                     println!("{}", HighlightedBoardState(board, legal_moves));
                 } else if legal_moves[to_linind(coord).unwrap()] {
-                    board.do_move(selected.unwrap(), coord);
+                    let won = board.do_move(selected.unwrap(), coord);
+
                     turn = turn.other_faction();
 
                     execute!(out, cursor::MoveTo(0, 0)).unwrap();
                     println!("{board}");
+
+                    if won {
+                        println!("{:?} wins!", turn.other_faction());
+                        sleep(Duration::from_secs(2));
+                        break;
+                    }
                 }
             }
             Event::Mouse(MouseEvent {
