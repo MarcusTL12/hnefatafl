@@ -3,12 +3,12 @@ use std::fmt::Display;
 use bitarray::BitArray;
 use crossterm::style::Stylize;
 
-const W: usize = 11;
+pub const W: usize = 11;
 
-const N: usize = (2 * W * W).div_ceil(usize::BITS as usize);
-const M: usize = (W * W).div_ceil(usize::BITS as usize);
+pub const N: usize = (2 * W * W).div_ceil(usize::BITS as usize);
+pub const M: usize = (W * W).div_ceil(usize::BITS as usize);
 
-const TOWERS: BitArray<M> = BitArray([1152921504606848001, 72127962782105600]);
+pub const TOWERS: BitArray<M> = BitArray([1152921504606848001, 72127962782105600]);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Piece {
