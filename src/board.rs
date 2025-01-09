@@ -333,6 +333,11 @@ impl BoardState {
             }
         }
 
+        // Test for the following special moves:
+        // Surrounded
+        // Exit Fort
+        // Shield wall
+
         false
     }
 }
