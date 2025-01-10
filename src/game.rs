@@ -4,8 +4,9 @@ use bitarray::BitArray;
 use crossterm::{
     cursor,
     event::{
-        self, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind,
-        KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode,
+        KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent,
+        MouseEventKind,
     },
     execute,
     style::Stylize,
@@ -182,6 +183,7 @@ impl GameState {
             self.out,
             EnableMouseCapture,
             EnterAlternateScreen,
+            cursor::Hide,
             cursor::MoveTo(0, 0)
         )
         .unwrap();
@@ -279,6 +281,12 @@ impl GameState {
             }
         }
 
-        execute!(self.out, LeaveAlternateScreen).unwrap();
+        execute!(
+            self.out,
+            DisableMouseCapture,
+            cursor::Show,
+            LeaveAlternateScreen
+        )
+        .unwrap();
     }
 }
