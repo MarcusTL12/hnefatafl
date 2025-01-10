@@ -69,6 +69,9 @@ impl GameState {
         } else if self.legal_moves[to_linind(coord).unwrap()] {
             let won = self.board.do_move(self.selected.unwrap(), coord);
 
+            self.selected = None;
+            self.legal_moves = BitArray::new();
+
             self.turn = self.turn.other_faction();
 
             execute!(self.out, cursor::MoveTo(0, 0)).unwrap();
