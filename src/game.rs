@@ -50,7 +50,7 @@ impl GameState {
             selected: None,
             legal_moves: BitArray::new(),
             turn: Faction::Black,
-            history: vec![board],
+            history: Vec::new(),
             looking_back_at: None,
         }
     }
