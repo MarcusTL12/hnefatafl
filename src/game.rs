@@ -8,7 +8,7 @@ use crossterm::{
         MouseButton, MouseEvent, MouseEventKind,
     },
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
 };
 
 use crate::board::{
@@ -97,9 +97,16 @@ impl GameState {
                         self.turn = self.turn.other_faction();
 
                         execute!(out, cursor::MoveTo(0, 0)).unwrap();
-                        println!("{}{:?} to move", self.board, self.turn);
+                        print!("{}", self.board);
 
                         if won {
+                            execute!(
+                                out,
+                                terminal::Clear(
+                                    terminal::ClearType::CurrentLine
+                                )
+                            )
+                            .unwrap();
                             println!("{:?} wins!", self.turn.other_faction());
 
                             println!("Press any key to quit");
@@ -111,7 +118,11 @@ impl GameState {
                             }
 
                             break;
+                        } else {
+                            print!("{:?} to move", self.turn);
                         }
+
+                        println!();
                     }
                 }
                 Event::Mouse(MouseEvent {
