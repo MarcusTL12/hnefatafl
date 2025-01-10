@@ -4,8 +4,8 @@ use bitarray::BitArray;
 use crossterm::{
     cursor,
     event::{
-        self, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
-        MouseButton, MouseEvent, MouseEventKind,
+        self, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind,
+        KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
     },
     execute,
     style::Stylize,
@@ -37,6 +37,7 @@ pub struct GameState {
     legal_moves: BitArray<{ board::M }>,
     turn: Faction,
     history: Vec<BoardState>,
+    looking_back_at: Option<usize>,
 }
 
 impl GameState {
@@ -50,6 +51,7 @@ impl GameState {
             legal_moves: BitArray::new(),
             turn: Faction::Black,
             history: vec![board],
+            looking_back_at: None,
         }
     }
 
@@ -59,7 +61,7 @@ impl GameState {
         println!(
             "\
 ┏━━━┓ ┏━━━━━━━━━━━━━━━┯━━━━━━━━━━━━━━━━━┓ ┏━━━┯━━━┓
-┃ {} ┃ ┃ {:#?} to move │ Move number {:3} ┃ ┃ < │ > ┃
+┃ {} ┃ ┃ {:#?} to move │ Move number {:3} ┃ ┃ < │ {} ┃
 ┗━━━┛ ┗━━━━━━━━━━━━━━━┷━━━━━━━━━━━━━━━━━┛ ┗━━━┷━━━┛",
             match self.turn {
                 Faction::Black => "◯",
@@ -68,6 +70,7 @@ impl GameState {
             .bold(),
             self.turn,
             self.history.len(),
+            ">".dim(),
         );
     }
 
@@ -77,6 +80,9 @@ impl GameState {
         row: u16,
     ) -> Result<(), &'static str> {
         let Some(coord) = screen_coord_to_game_coord([row, column]) else {
+            execute!(self.out, cursor::MoveTo(0, 0)).unwrap();
+            println!("You pressed {row} {column}");
+
             return Err("continue");
         };
 
@@ -90,12 +96,12 @@ impl GameState {
             execute!(self.out, cursor::MoveTo(0, 0)).unwrap();
             println!("{}", HighlightedBoardState(self.board, self.legal_moves));
         } else if self.legal_moves[to_linind(coord).unwrap()] {
+            self.history.push(self.board);
+
             let won = self.board.do_move(self.selected.unwrap(), coord);
 
             self.selected = None;
             self.legal_moves = BitArray::new();
-
-            self.history.push(self.board);
 
             self.turn = self.turn.other_faction();
 
@@ -165,6 +171,37 @@ impl GameState {
                     row: 1,
                     modifiers: KeyModifiers::NONE,
                 }) => break,
+
+                Event::Key(KeyEvent {
+                    code: KeyCode::Left,
+                    modifiers: KeyModifiers::NONE,
+                    kind: KeyEventKind::Press,
+                    state: _,
+                })
+                | Event::Mouse(MouseEvent {
+                    kind: MouseEventKind::Down(MouseButton::Left),
+                    column: 43..=45,
+                    row: 27,
+                    modifiers: KeyModifiers::NONE,
+                }) => {
+                    println!("You pressed left!");
+                }
+
+                Event::Key(KeyEvent {
+                    code: KeyCode::Right,
+                    modifiers: KeyModifiers::NONE,
+                    kind: KeyEventKind::Press,
+                    state: _,
+                })
+                | Event::Mouse(MouseEvent {
+                    kind: MouseEventKind::Down(MouseButton::Left),
+                    column: 47..=49,
+                    row: 27,
+                    modifiers: KeyModifiers::NONE,
+                }) => {
+                    println!("You pressed right!")
+                }
+
                 Event::Mouse(MouseEvent {
                     kind: MouseEventKind::Down(MouseButton::Left),
                     column,
@@ -176,6 +213,7 @@ impl GameState {
                     Ok(()) => {}
                     Err(x) => panic!("{x}"),
                 },
+
                 Event::Mouse(MouseEvent {
                     kind: MouseEventKind::Down(MouseButton::Right),
                     column: _,
@@ -191,6 +229,7 @@ impl GameState {
                         println!("{}", self.board);
                     }
                 }
+
                 _ => {}
             }
         }
