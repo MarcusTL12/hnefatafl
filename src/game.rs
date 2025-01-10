@@ -184,6 +184,7 @@ impl GameState {
             EnableMouseCapture,
             EnterAlternateScreen,
             cursor::Hide,
+            terminal::Clear(terminal::ClearType::All),
             cursor::MoveTo(0, 0)
         )
         .unwrap();
