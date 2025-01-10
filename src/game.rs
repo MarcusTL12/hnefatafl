@@ -55,23 +55,54 @@ impl GameState {
         }
     }
 
-    fn render(&self) {
-        print!("{}", self.board);
+    fn render(&mut self) {
+        execute!(self.out, cursor::MoveTo(0, 0)).unwrap();
 
-        println!(
-            "\
+        if let Some(i) = self.looking_back_at {
+            print!("{}", self.history[i]);
+
+            let turn = [Faction::Black, Faction::White][i % 2];
+
+            println!(
+                "\
 ┏━━━┓ ┏━━━━━━━━━━━━━━━┯━━━━━━━━━━━━━━━━━┓ ┏━━━┯━━━┓
-┃ {} ┃ ┃ {:#?} to move │ Move number {:3} ┃ ┃ < │ {} ┃
+┃ {} ┃ ┃ {} │ Move number {i:3} ┃ ┃ {} │ ▶ ┃
 ┗━━━┛ ┗━━━━━━━━━━━━━━━┷━━━━━━━━━━━━━━━━━┛ ┗━━━┷━━━┛",
-            match self.turn {
-                Faction::Black => "◯",
-                Faction::White => "⬤",
-            }
-            .bold(),
-            self.turn,
-            self.history.len(),
-            ">".dim(),
-        );
+                match turn {
+                    Faction::Black => "◯",
+                    Faction::White => "⬤",
+                }
+                .bold(),
+                format!("{:?} to move", turn).dim(),
+                if i == 0 {
+                    format!("{}", "◀".dim())
+                } else {
+                    "◀".to_owned()
+                }
+            );
+        } else {
+            print!("{}", self.board);
+
+            println!(
+                "\
+┏━━━┓ ┏━━━━━━━━━━━━━━━┯━━━━━━━━━━━━━━━━━┓ ┏━━━┯━━━┓
+┃ {} ┃ ┃ {:?} to move │ Move number {:3} ┃ ┃ {} │ {} ┃
+┗━━━┛ ┗━━━━━━━━━━━━━━━┷━━━━━━━━━━━━━━━━━┛ ┗━━━┷━━━┛",
+                match self.turn {
+                    Faction::Black => "◯",
+                    Faction::White => "⬤",
+                }
+                .bold(),
+                self.turn,
+                self.history.len(),
+                if self.history.is_empty() {
+                    format!("{}", "◀".dim())
+                } else {
+                    "◀".to_owned()
+                },
+                "▶".dim(),
+            );
+        }
     }
 
     fn handle_mouse_input(
@@ -79,8 +110,12 @@ impl GameState {
         column: u16,
         row: u16,
     ) -> Result<(), &'static str> {
+        if self.looking_back_at.is_some() {
+            return Ok(());
+        }
+
         let Some(coord) = screen_coord_to_game_coord([row, column]) else {
-            return Err("continue");
+            return Ok(());
         };
 
         if self.board.get_2d(coord).and_then(|x| x.try_into().ok())
@@ -102,7 +137,6 @@ impl GameState {
 
             self.turn = self.turn.other_faction();
 
-            execute!(self.out, cursor::MoveTo(0, 0)).unwrap();
             self.render();
 
             if won {
@@ -181,7 +215,15 @@ impl GameState {
                     row: 27,
                     modifiers: KeyModifiers::NONE,
                 }) => {
-                    println!("You pressed left!");
+                    if let Some(i) = self.looking_back_at.as_mut() {
+                        if *i > 0 {
+                            *i -= 1;
+                        }
+                    } else if !self.history.is_empty() {
+                        self.looking_back_at = Some(self.history.len() - 1);
+                    }
+
+                    self.render();
                 }
 
                 Event::Key(KeyEvent {
@@ -196,7 +238,15 @@ impl GameState {
                     row: 27,
                     modifiers: KeyModifiers::NONE,
                 }) => {
-                    println!("You pressed right!")
+                    if let Some(i) = self.looking_back_at.as_mut() {
+                        if *i < self.history.len() - 1 {
+                            *i += 1;
+                        } else {
+                            self.looking_back_at = None;
+                        }
+                    }
+
+                    self.render();
                 }
 
                 Event::Mouse(MouseEvent {
@@ -205,9 +255,8 @@ impl GameState {
                     row,
                     modifiers: KeyModifiers::NONE,
                 }) => match self.handle_mouse_input(column, row) {
-                    Err("continue") => continue,
-                    Err("break") => break,
                     Ok(()) => {}
+                    Err("break") => break,
                     Err(x) => panic!("{x}"),
                 },
 
@@ -222,8 +271,7 @@ impl GameState {
 
                         self.legal_moves = BitArray::new();
 
-                        execute!(self.out, cursor::MoveTo(0, 0)).unwrap();
-                        println!("{}", self.board);
+                        self.render();
                     }
                 }
 

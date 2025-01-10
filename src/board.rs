@@ -41,8 +41,8 @@ impl TryFrom<usize> for Piece {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Faction {
+    Black = 0,
     White,
-    Black,
 }
 
 impl TryFrom<Piece> for Faction {
