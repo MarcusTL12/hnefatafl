@@ -63,9 +63,15 @@ impl GameState {
             match x {
                 Event::Key(KeyEvent {
                     code: KeyCode::Char('q'),
-                    modifiers: _,
+                    modifiers: KeyModifiers::NONE,
                     kind: _,
                     state: _,
+                })
+                | Event::Mouse(MouseEvent {
+                    kind: MouseEventKind::Down(MouseButton::Left),
+                    column: 1..=3,
+                    row: 1,
+                    modifiers: KeyModifiers::NONE,
                 }) => break,
                 Event::Mouse(MouseEvent {
                     kind: MouseEventKind::Down(MouseButton::Left),
@@ -75,9 +81,6 @@ impl GameState {
                 }) => {
                     let Some(coord) = screen_coord_to_game_coord([row, column])
                     else {
-                        if row == 1 && (1..=3).contains(&column) {
-                            break;
-                        }
                         continue;
                     };
 
