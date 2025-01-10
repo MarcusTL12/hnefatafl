@@ -57,7 +57,7 @@ impl GameState {
         )
         .unwrap();
 
-        println!("{}", self.board);
+        println!("{}{:?} to move", self.board, self.turn);
 
         while let Ok(x) = event::read() {
             match x {
@@ -97,7 +97,7 @@ impl GameState {
                         self.turn = self.turn.other_faction();
 
                         execute!(out, cursor::MoveTo(0, 0)).unwrap();
-                        println!("{}", self.board);
+                        println!("{}{:?} to move", self.board, self.turn);
 
                         if won {
                             println!("{:?} wins!", self.turn.other_faction());
