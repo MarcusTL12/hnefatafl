@@ -80,9 +80,6 @@ impl GameState {
         row: u16,
     ) -> Result<(), &'static str> {
         let Some(coord) = screen_coord_to_game_coord([row, column]) else {
-            execute!(self.out, cursor::MoveTo(0, 0)).unwrap();
-            println!("You pressed {row} {column}");
-
             return Err("continue");
         };
 
