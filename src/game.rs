@@ -8,6 +8,7 @@ use crossterm::{
         MouseButton, MouseEvent, MouseEventKind,
     },
     execute,
+    style::Stylize,
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
 };
 
@@ -35,17 +36,39 @@ pub struct GameState {
     selected: Option<[u16; 2]>,
     legal_moves: BitArray<{ board::M }>,
     turn: Faction,
+    history: Vec<BoardState>,
 }
 
 impl GameState {
     pub fn new() -> Self {
+        let board = BoardState::standard_setup();
+
         Self {
             out: stdout(),
-            board: BoardState::standard_setup(),
+            board,
             selected: None,
             legal_moves: BitArray::new(),
             turn: Faction::Black,
+            history: vec![board],
         }
+    }
+
+    fn render(&self) {
+        print!("{}", self.board);
+
+        println!(
+            "\
+┏━━━┓ ┏━━━━━━━━━━━━━━━┯━━━━━━━━━━━━━━━━━┓ ┏━━━┯━━━┓
+┃ {} ┃ ┃ {:#?} to move │ Move number {:3} ┃ ┃ < │ > ┃
+┗━━━┛ ┗━━━━━━━━━━━━━━━┷━━━━━━━━━━━━━━━━━┛ ┗━━━┷━━━┛",
+            match self.turn {
+                Faction::Black => "◯",
+                Faction::White => "⬤",
+            }
+            .bold(),
+            self.turn,
+            self.history.len(),
+        );
     }
 
     fn handle_mouse_input(
@@ -72,20 +95,35 @@ impl GameState {
             self.selected = None;
             self.legal_moves = BitArray::new();
 
+            self.history.push(self.board);
+
             self.turn = self.turn.other_faction();
 
             execute!(self.out, cursor::MoveTo(0, 0)).unwrap();
-            print!("{}", self.board);
+            self.render();
 
             if won {
                 execute!(
                     self.out,
-                    terminal::Clear(terminal::ClearType::CurrentLine)
+                    cursor::MoveUp(3),
+                    terminal::Clear(terminal::ClearType::FromCursorDown)
                 )
                 .unwrap();
-                println!("{:?} wins!", self.turn.other_faction());
 
-                println!("Press any key to quit");
+                let winning_faction = self.turn.other_faction();
+
+                println!(
+                    "\
+┏━━━┓ ┏━━━━━━━━━━━━━┓ ┏━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ {} ┃ ┃ {:?} wins! ┃ ┃ Press any key to quit ┃
+┗━━━┛ ┗━━━━━━━━━━━━━┛ ┗━━━━━━━━━━━━━━━━━━━━━━━┛",
+                    match winning_faction {
+                        Faction::Black => "◯",
+                        Faction::White => "⬤",
+                    }
+                    .bold(),
+                    winning_faction,
+                );
 
                 while let Ok(x) = event::read() {
                     if let Event::Key(_) = x {
@@ -94,8 +132,6 @@ impl GameState {
                 }
 
                 return Err("break");
-            } else {
-                print!("{:?} to move", self.turn);
             }
 
             println!();
@@ -113,7 +149,7 @@ impl GameState {
         )
         .unwrap();
 
-        println!("{}{:?} to move", self.board, self.turn);
+        self.render();
 
         while let Ok(x) = event::read() {
             match x {
