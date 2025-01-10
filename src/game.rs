@@ -1,4 +1,7 @@
-use std::io::{Stdout, stdout};
+use std::{
+    io::{Stdout, stdout},
+    time::Instant,
+};
 
 use bitarray::BitArray;
 use crossterm::{
@@ -15,6 +18,7 @@ use crossterm::{
 
 use crate::board::{
     self, BoardState, Faction, HighlightedBoardState, to_linind,
+    to_readable_coord,
 };
 
 fn screen_coord_to_game_coord([y, x]: [u16; 2]) -> Option<[u16; 2]> {
@@ -276,6 +280,33 @@ impl GameState {
 
                         self.render();
                     }
+                }
+
+                Event::Key(KeyEvent {
+                    code: KeyCode::Enter,
+                    modifiers: KeyModifiers::NONE,
+                    kind: KeyEventKind::Press,
+                    state: _,
+                }) => {
+                    self.render();
+                    execute!(
+                        self.out,
+                        terminal::Clear(terminal::ClearType::FromCursorDown)
+                    )
+                    .unwrap();
+                    println!("Computing best move:");
+                    let t = Instant::now();
+
+                    let best_move = self.board.best_move(self.turn, 3);
+
+                    let t = t.elapsed();
+
+                    println!(
+                        "Best move: {} -> {}, score: {}, Took: {t:.2?}",
+                        to_readable_coord(best_move.0[0]),
+                        to_readable_coord(best_move.0[1]),
+                        best_move.1,
+                    );
                 }
 
                 _ => {}

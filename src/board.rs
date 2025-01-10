@@ -11,6 +11,10 @@ pub const M: usize = (W * W).div_ceil(usize::BITS as usize);
 pub const TOWERS: BitArray<M> =
     BitArray([1152921504606848001, 72127962782105600]);
 
+pub fn to_readable_coord([y, x]: [u16; 2]) -> String {
+    format!("{}{}", b"ABCDEFGHIJK"[x as usize] as char, y + 1)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Piece {
     Empty = 0,
