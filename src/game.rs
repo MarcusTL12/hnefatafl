@@ -75,6 +75,9 @@ impl GameState {
                 }) => {
                     let Some(coord) = screen_coord_to_game_coord([row, column])
                     else {
+                        if row == 1 && (1..=3).contains(&column) {
+                            break;
+                        }
                         continue;
                     };
 
