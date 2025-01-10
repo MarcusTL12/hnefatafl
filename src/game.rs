@@ -1,4 +1,4 @@
-use std::io::stdout;
+use std::io::{Stdout, stdout};
 
 use bitarray::BitArray;
 use crossterm::{
@@ -30,6 +30,7 @@ fn screen_coord_to_game_coord([y, x]: [u16; 2]) -> Option<[u16; 2]> {
 }
 
 pub struct GameState {
+    out: Stdout,
     board: BoardState,
     selected: Option<[u16; 2]>,
     legal_moves: BitArray<{ board::M }>,
@@ -39,6 +40,7 @@ pub struct GameState {
 impl GameState {
     pub fn new() -> Self {
         Self {
+            out: stdout(),
             board: BoardState::standard_setup(),
             selected: None,
             legal_moves: BitArray::new(),
@@ -46,11 +48,62 @@ impl GameState {
         }
     }
 
-    pub fn run(&mut self) {
-        let mut out = stdout();
+    fn handle_mouse_input(
+        &mut self,
+        column: u16,
+        row: u16,
+    ) -> Result<(), &'static str> {
+        let Some(coord) = screen_coord_to_game_coord([row, column]) else {
+            return Err("continue");
+        };
 
+        if self.board.get_2d(coord).and_then(|x| x.try_into().ok())
+            == Some(self.turn)
+        {
+            self.selected = Some(coord);
+
+            self.legal_moves = self.board.moves_from(coord);
+
+            execute!(self.out, cursor::MoveTo(0, 0)).unwrap();
+            println!("{}", HighlightedBoardState(self.board, self.legal_moves));
+        } else if self.legal_moves[to_linind(coord).unwrap()] {
+            let won = self.board.do_move(self.selected.unwrap(), coord);
+
+            self.turn = self.turn.other_faction();
+
+            execute!(self.out, cursor::MoveTo(0, 0)).unwrap();
+            print!("{}", self.board);
+
+            if won {
+                execute!(
+                    self.out,
+                    terminal::Clear(terminal::ClearType::CurrentLine)
+                )
+                .unwrap();
+                println!("{:?} wins!", self.turn.other_faction());
+
+                println!("Press any key to quit");
+
+                while let Ok(x) = event::read() {
+                    if let Event::Key(_) = x {
+                        break;
+                    }
+                }
+
+                return Err("break");
+            } else {
+                print!("{:?} to move", self.turn);
+            }
+
+            println!();
+        }
+
+        Ok(())
+    }
+
+    pub fn run(&mut self) {
         execute!(
-            out,
+            self.out,
             EnableMouseCapture,
             EnterAlternateScreen,
             cursor::MoveTo(0, 0)
@@ -78,59 +131,12 @@ impl GameState {
                     column,
                     row,
                     modifiers: KeyModifiers::NONE,
-                }) => {
-                    let Some(coord) = screen_coord_to_game_coord([row, column])
-                    else {
-                        continue;
-                    };
-
-                    if self.board.get_2d(coord).and_then(|x| x.try_into().ok())
-                        == Some(self.turn)
-                    {
-                        self.selected = Some(coord);
-
-                        self.legal_moves = self.board.moves_from(coord);
-
-                        execute!(out, cursor::MoveTo(0, 0)).unwrap();
-                        println!(
-                            "{}",
-                            HighlightedBoardState(self.board, self.legal_moves)
-                        );
-                    } else if self.legal_moves[to_linind(coord).unwrap()] {
-                        let won =
-                            self.board.do_move(self.selected.unwrap(), coord);
-
-                        self.turn = self.turn.other_faction();
-
-                        execute!(out, cursor::MoveTo(0, 0)).unwrap();
-                        print!("{}", self.board);
-
-                        if won {
-                            execute!(
-                                out,
-                                terminal::Clear(
-                                    terminal::ClearType::CurrentLine
-                                )
-                            )
-                            .unwrap();
-                            println!("{:?} wins!", self.turn.other_faction());
-
-                            println!("Press any key to quit");
-
-                            while let Ok(x) = event::read() {
-                                if let Event::Key(_) = x {
-                                    break;
-                                }
-                            }
-
-                            break;
-                        } else {
-                            print!("{:?} to move", self.turn);
-                        }
-
-                        println!();
-                    }
-                }
+                }) => match self.handle_mouse_input(column, row) {
+                    Err("continue") => continue,
+                    Err("break") => break,
+                    Ok(()) => {}
+                    Err(x) => panic!("{x}"),
+                },
                 Event::Mouse(MouseEvent {
                     kind: MouseEventKind::Down(MouseButton::Right),
                     column: _,
@@ -142,7 +148,7 @@ impl GameState {
 
                         self.legal_moves = BitArray::new();
 
-                        execute!(out, cursor::MoveTo(0, 0)).unwrap();
+                        execute!(self.out, cursor::MoveTo(0, 0)).unwrap();
                         println!("{}", self.board);
                     }
                 }
@@ -150,6 +156,6 @@ impl GameState {
             }
         }
 
-        execute!(out, LeaveAlternateScreen).unwrap();
+        execute!(self.out, LeaveAlternateScreen).unwrap();
     }
 }
