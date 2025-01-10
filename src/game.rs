@@ -1,4 +1,4 @@
-use std::{io::stdout, thread::sleep, time::Duration};
+use std::io::stdout;
 
 use bitarray::BitArray;
 use crossterm::{
@@ -101,7 +101,15 @@ impl GameState {
 
                         if won {
                             println!("{:?} wins!", self.turn.other_faction());
-                            sleep(Duration::from_secs(2));
+
+                            println!("Press any key to quit");
+
+                            while let Ok(x) = event::read() {
+                                if let Event::Key(_) = x {
+                                    break;
+                                }
+                            }
+
                             break;
                         }
                     }

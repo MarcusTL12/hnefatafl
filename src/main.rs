@@ -1,23 +1,38 @@
 #![feature(iter_array_chunks)]
 
+use std::env;
+
 use board::{BoardState, Faction};
+use game::GameState;
 
 mod board;
 mod bot;
 mod game;
 
 fn main() {
-    // let mut game = GameState::new();
+    let mut args = env::args();
 
-    // game.run();
+    args.next();
 
-    let board = BoardState::standard_setup();
+    match args.next().as_deref() {
+        Some("test") => {
+            let board = BoardState::standard_setup();
 
-    let tmp: Vec<_> = board.all_moves(Faction::Black).collect();
+            let tmp: Vec<_> = board.all_moves(Faction::Black).collect();
 
-    println!("{}", tmp.len());
+            println!("{}", tmp.len());
 
-    println!("{tmp:?}");
+            println!("{tmp:?}");
 
-    println!("{}", tmp.into_iter().map(|x| x.count_ones()).sum::<usize>());
+            println!(
+                "{}",
+                tmp.into_iter().map(|x| x.count_ones()).sum::<usize>()
+            );
+        }
+        _ => {
+            let mut game = GameState::new();
+
+            game.run();
+        }
+    }
 }
