@@ -1,9 +1,9 @@
 use std::{
-    collections::HashMap,
     io::{Stdout, stdout},
     time::Instant,
 };
 
+use ahash::RandomState;
 use bitarray::BitArray;
 use crossterm::{
     cursor,
@@ -16,6 +16,7 @@ use crossterm::{
     style::Stylize,
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use hashbrown::HashMap;
 
 use crate::board::{
     self, BoardState, Faction, HighlightedBoardState, to_linind,
@@ -44,7 +45,7 @@ pub struct GameState {
     turn: Faction,
     history: Vec<BoardState>,
     looking_back_at: Option<usize>,
-    trans_table: HashMap<BoardState, (u32, f64)>,
+    trans_table: HashMap<BoardState, (u32, f64), RandomState>,
 }
 
 impl GameState {
@@ -59,7 +60,7 @@ impl GameState {
             turn: Faction::Black,
             history: Vec::new(),
             looking_back_at: None,
-            trans_table: HashMap::new(),
+            trans_table: HashMap::default(),
         }
     }
 

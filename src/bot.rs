@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use ahash::RandomState;
+use hashbrown::HashMap;
 
 use crate::board::{BoardState, Faction, Piece, W};
 
@@ -73,7 +74,7 @@ impl BoardState {
         depth: u32,
         mut alpha: f64,
         mut beta: f64,
-        trans_table: &mut HashMap<Self, (u32, f64)>,
+        trans_table: &mut HashMap<Self, (u32, f64), RandomState>,
     ) -> f64 {
         if depth == 0 {
             return self.zeroeval();
@@ -152,7 +153,7 @@ impl BoardState {
         self,
         turn: Faction,
         depth: u32,
-        trans_table: &mut HashMap<Self, (u32, f64)>,
+        trans_table: &mut HashMap<Self, (u32, f64), RandomState>,
     ) -> ([[u16; 2]; 2], f64) {
         let mut alpha = -f64::INFINITY;
         let mut beta = f64::INFINITY;
