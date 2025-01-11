@@ -1,6 +1,6 @@
 #![feature(iter_array_chunks)]
 
-use std::{env, time::Instant};
+use std::{collections::HashMap, env, time::Instant};
 
 use board::{BoardState, Faction};
 use game::GameState;
@@ -35,7 +35,7 @@ fn main() {
             let n: u32 = args.next().map(|x| x.parse().unwrap()).unwrap_or(0);
 
             let t = Instant::now();
-            let m = board.best_move(Faction::Black, n);
+            let m = board.best_move(Faction::Black, n, &mut HashMap::new());
             let t = t.elapsed();
 
             println!("Best move: {m:?}, took: {t:.2?}");

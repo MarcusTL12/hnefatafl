@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     io::{Stdout, stdout},
     time::Instant,
 };
@@ -43,6 +44,7 @@ pub struct GameState {
     turn: Faction,
     history: Vec<BoardState>,
     looking_back_at: Option<usize>,
+    trans_table: HashMap<BoardState, (u32, f64)>,
 }
 
 impl GameState {
@@ -57,6 +59,7 @@ impl GameState {
             turn: Faction::Black,
             history: Vec::new(),
             looking_back_at: None,
+            trans_table: HashMap::new(),
         }
     }
 
@@ -299,7 +302,11 @@ impl GameState {
 
                     let d = (c as u8 - b'0') as u32;
 
-                    let best_move = self.board.best_move(self.turn, d);
+                    let best_move = self.board.best_move(
+                        self.turn,
+                        d,
+                        &mut self.trans_table,
+                    );
 
                     let t = t.elapsed();
 

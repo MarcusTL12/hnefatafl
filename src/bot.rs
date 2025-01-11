@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::board::{BoardState, Faction, Piece, W};
 
 impl BoardState {
@@ -71,9 +73,16 @@ impl BoardState {
         depth: u32,
         mut alpha: f64,
         mut beta: f64,
+        trans_table: &mut HashMap<Self, (u32, f64)>,
     ) -> f64 {
         if depth == 0 {
             return self.zeroeval();
+        }
+
+        if let Some(&(d, s)) = trans_table.get(&self) {
+            if d >= depth {
+                return s;
+            }
         }
 
         let it = self.all_moves(turn).map(|[from, to]| {
@@ -81,7 +90,7 @@ impl BoardState {
             (new_board.do_move(from, to), new_board)
         });
 
-        match turn {
+        let score = match turn {
             Faction::White => {
                 let mut score = -f64::INFINITY;
 
@@ -94,6 +103,7 @@ impl BoardState {
                             depth - 1,
                             alpha,
                             beta,
+                            trans_table,
                         )
                     });
 
@@ -111,13 +121,14 @@ impl BoardState {
 
                 for (won, board) in it {
                     score = score.min(if won {
-                        f64::INFINITY
+                        -f64::INFINITY
                     } else {
                         board.alphabeta(
                             turn.other_faction(),
                             depth - 1,
                             alpha,
                             beta,
+                            trans_table,
                         )
                     });
 
@@ -130,10 +141,19 @@ impl BoardState {
 
                 score
             }
-        }
+        };
+
+        *trans_table.entry(self).or_insert((depth, score)) = (depth, score);
+
+        score
     }
 
-    pub fn best_move(self, turn: Faction, depth: u32) -> ([[u16; 2]; 2], f64) {
+    pub fn best_move(
+        self,
+        turn: Faction,
+        depth: u32,
+        trans_table: &mut HashMap<Self, (u32, f64)>,
+    ) -> ([[u16; 2]; 2], f64) {
         let mut alpha = -f64::INFINITY;
         let mut beta = f64::INFINITY;
 
@@ -152,7 +172,13 @@ impl BoardState {
                     Faction::White => f64::INFINITY,
                 }
             } else {
-                new_board.alphabeta(turn.other_faction(), depth, alpha, beta)
+                new_board.alphabeta(
+                    turn.other_faction(),
+                    depth,
+                    alpha,
+                    beta,
+                    trans_table,
+                )
             };
 
             match turn {

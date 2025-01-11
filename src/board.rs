@@ -70,7 +70,7 @@ impl Faction {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BoardState(pub BitArray<N>);
 
 impl Display for BoardState {
