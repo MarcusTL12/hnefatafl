@@ -164,6 +164,10 @@ impl BoardState {
         };
 
         for [from, to] in self.all_moves(turn) {
+            if best_move.is_none() {
+                best_move = Some([from, to])
+            }
+
             let mut new_board = self;
 
             let local_score = if new_board.do_move(from, to) {
@@ -198,6 +202,9 @@ impl BoardState {
                 }
             }
         }
+
+        *trans_table.entry(self).or_insert((depth + 1, score)) =
+            (depth + 1, score);
 
         (best_move.unwrap(), score)
     }
