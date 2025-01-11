@@ -5,7 +5,7 @@ use crossterm::style::Stylize;
 
 pub const W: usize = 11;
 
-pub const N: usize = (2 * W * W).div_ceil(usize::BITS as usize);
+// pub const N: usize = (2 * W * W).div_ceil(usize::BITS as usize);
 pub const M: usize = (W * W).div_ceil(usize::BITS as usize);
 
 pub const TOWERS: BitArray<M> =
@@ -43,6 +43,28 @@ impl TryFrom<usize> for Piece {
     }
 }
 
+impl From<[bool; 2]> for Piece {
+    fn from(value: [bool; 2]) -> Self {
+        match value {
+            [false, false] => Self::Empty,
+            [true, false] => Self::King,
+            [false, true] => Self::Black,
+            [true, true] => Self::White,
+        }
+    }
+}
+
+impl From<Piece> for [bool; 2] {
+    fn from(value: Piece) -> Self {
+        match value {
+            Piece::Empty => [false, false],
+            Piece::King => [true, false],
+            Piece::Black => [false, true],
+            Piece::White => [true, true],
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Faction {
     Black = 0,
@@ -71,7 +93,7 @@ impl Faction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct BoardState(pub BitArray<N>);
+pub struct BoardState(pub [BitArray<M>; 2]);
 
 impl Display for BoardState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -96,7 +118,7 @@ pub fn to_linind([y, x]: [u16; 2]) -> Option<usize> {
 
 impl BoardState {
     pub fn new() -> Self {
-        Self(BitArray::new())
+        Self([BitArray::new(); 2])
     }
 
     pub fn standard_setup() -> Self {
@@ -158,11 +180,13 @@ impl BoardState {
     }
 
     pub fn get(&self, i: usize) -> Piece {
-        self.0.get_nbit::<2>(i).try_into().unwrap()
+        self.0.map(|x| x[i]).into()
     }
 
     pub fn set(&mut self, i: usize, val: Piece) {
-        self.0.set_nbit::<2>(i, val as usize)
+        for (val, mat) in <[bool; 2]>::from(val).into_iter().zip(&mut self.0) {
+            mat.set(i, val);
+        }
     }
 
     pub fn get_2d(&self, [y, x]: [u16; 2]) -> Option<Piece> {
@@ -182,10 +206,10 @@ impl BoardState {
         writeln!(f, "┃ X ┃ ┃ A ┃ B ┃ C ┃ D ┃ E ┃ F ┃ G ┃ H ┃ I ┃ J ┃ K ┃")?;
         writeln!(f, "┗━━━┛ ┗━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┛")?;
 
-        for (row, c) in self
-            .0
-            .nbits_iter::<2>()
-            .map(|x| Piece::try_from(x).unwrap())
+        for (row, c) in self.0[0]
+            .into_iter()
+            .zip(self.0[1])
+            .map(|(a, b)| Piece::from([a, b]))
             .take(121)
             .array_chunks::<11>()
             .enumerate()

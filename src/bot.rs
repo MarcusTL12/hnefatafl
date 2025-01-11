@@ -8,9 +8,10 @@ impl BoardState {
         &self,
         turn: Faction,
     ) -> impl Iterator<Item = [[u16; 2]; 2]> {
-        self.0
-            .nbits_iter::<2>()
-            .map(|x| Piece::try_from(x).unwrap())
+        self.0[0]
+            .into_iter()
+            .zip(self.0[1])
+            .map(|(a, b)| Piece::from([a, b]))
             .take(121)
             .array_chunks::<11>()
             .enumerate()
@@ -32,10 +33,12 @@ impl BoardState {
     }
 
     fn zeroeval(self) -> f64 {
-        self.0
-            .nbits_iter::<2>()
+        self.0[0]
+            .into_iter()
+            .zip(self.0[1])
+            .map(|(a, b)| Piece::from([a, b]))
             .take(121)
-            .map(|x| match Piece::try_from(x).unwrap().try_into() {
+            .map(|x| match x.try_into() {
                 Ok(Faction::White) => 1.0,
                 Ok(Faction::Black) => -1.0,
                 _ => 0.0,
