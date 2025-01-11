@@ -28,18 +28,22 @@ impl BoardState {
             })
     }
 
-    pub fn eval(self, turn: Faction, depth: u32) -> f64 {
+    fn zeroeval(self) -> f64 {
+        self.0
+            .nbits_iter::<2>()
+            .take(121)
+            .map(|x| match Piece::try_from(x).unwrap().try_into() {
+                Ok(Faction::White) => 1.0,
+                Ok(Faction::Black) => -1.0,
+                _ => 0.0,
+            })
+            .sum()
+    }
+
+    // Naive minimax
+    pub fn _minimax(self, turn: Faction, depth: u32) -> f64 {
         if depth == 0 {
-            return self
-                .0
-                .nbits_iter::<2>()
-                .take(121)
-                .map(|x| match Piece::try_from(x).unwrap().try_into() {
-                    Ok(Faction::White) => 1.0,
-                    Ok(Faction::Black) => -1.0,
-                    _ => 0.0,
-                })
-                .sum();
+            return self.zeroeval();
         }
 
         let evals_iter = self.all_moves(turn).map(|[from, to]| {
@@ -50,7 +54,7 @@ impl BoardState {
                     Faction::White => f64::INFINITY,
                 }
             } else {
-                new_board.eval(turn.other_faction(), depth - 1)
+                new_board._minimax(turn.other_faction(), depth - 1)
             }
         });
 
@@ -61,30 +65,114 @@ impl BoardState {
         .expect("No legal moves!")
     }
 
-    pub fn best_move(self, turn: Faction, depth: u32) -> ([[u16; 2]; 2], f64) {
-        let evals_iter = self.all_moves(turn).map(|[from, to]| {
+    pub fn alphabeta(
+        self,
+        turn: Faction,
+        depth: u32,
+        mut alpha: f64,
+        mut beta: f64,
+    ) -> f64 {
+        if depth == 0 {
+            return self.zeroeval();
+        }
+
+        let it = self.all_moves(turn).map(|[from, to]| {
             let mut new_board = self;
-            (
-                [from, to],
-                if new_board.do_move(from, to) {
-                    match turn {
-                        Faction::Black => -f64::INFINITY,
-                        Faction::White => f64::INFINITY,
-                    }
-                } else {
-                    new_board.eval(turn.other_faction(), depth)
-                },
-            )
+            (new_board.do_move(from, to), new_board)
         });
 
         match turn {
-            Faction::Black => {
-                evals_iter.min_by(|(_, a), (_, b)| a.total_cmp(b))
-            }
             Faction::White => {
-                evals_iter.max_by(|(_, a), (_, b)| a.total_cmp(b))
+                let mut score = -f64::INFINITY;
+
+                for (won, board) in it {
+                    score = score.max(if won {
+                        f64::INFINITY
+                    } else {
+                        board.alphabeta(
+                            turn.other_faction(),
+                            depth - 1,
+                            alpha,
+                            beta,
+                        )
+                    });
+
+                    alpha = alpha.max(score);
+
+                    if score >= beta {
+                        break;
+                    }
+                }
+
+                score
+            }
+            Faction::Black => {
+                let mut score = f64::INFINITY;
+
+                for (won, board) in it {
+                    score = score.min(if won {
+                        f64::INFINITY
+                    } else {
+                        board.alphabeta(
+                            turn.other_faction(),
+                            depth - 1,
+                            alpha,
+                            beta,
+                        )
+                    });
+
+                    beta = beta.min(score);
+
+                    if score <= alpha {
+                        break;
+                    }
+                }
+
+                score
             }
         }
-        .expect("No best move!")
+    }
+
+    pub fn best_move(self, turn: Faction, depth: u32) -> ([[u16; 2]; 2], f64) {
+        let mut alpha = -f64::INFINITY;
+        let mut beta = f64::INFINITY;
+
+        let mut best_move = None;
+        let mut score = match turn {
+            Faction::Black => f64::INFINITY,
+            Faction::White => -f64::INFINITY,
+        };
+
+        for [from, to] in self.all_moves(turn) {
+            let mut new_board = self;
+
+            let local_score = if new_board.do_move(from, to) {
+                match turn {
+                    Faction::Black => -f64::INFINITY,
+                    Faction::White => f64::INFINITY,
+                }
+            } else {
+                new_board.alphabeta(turn.other_faction(), depth, alpha, beta)
+            };
+
+            match turn {
+                Faction::Black => {
+                    if local_score < score {
+                        best_move = Some([from, to]);
+                        score = local_score;
+                    }
+                    beta = beta.min(score);
+                }
+                Faction::White => {
+                    if local_score > score {
+                        best_move = Some([from, to]);
+                        score = local_score;
+                    }
+                    alpha = alpha.max(score);
+                }
+            }
+        }
+
+        (best_move.unwrap(), score)
     }
 }

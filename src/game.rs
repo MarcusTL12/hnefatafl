@@ -287,7 +287,7 @@ impl GameState {
                     modifiers: KeyModifiers::NONE,
                     kind: KeyEventKind::Press,
                     state: _,
-                }) if ('0'..='3').contains(&c) => {
+                }) if ('0'..='5').contains(&c) => {
                     self.render();
                     execute!(
                         self.out,
@@ -297,14 +297,15 @@ impl GameState {
                     println!("Computing best move:");
                     let t = Instant::now();
 
-                    let best_move = self
-                        .board
-                        .best_move(self.turn, (c as u8 - b'0') as u32);
+                    let d = (c as u8 - b'0') as u32;
+
+                    let best_move = self.board.best_move(self.turn, d);
 
                     let t = t.elapsed();
 
                     println!(
-                        "Best move: {} -> {}, score: {}, Took: {t:.2?}",
+                        "Best move: {} -> {}, score: {}, \
+                        Took: {t:.2?} at depth: {d}",
                         to_readable_coord(best_move.0[0]),
                         to_readable_coord(best_move.0[1]),
                         best_move.1,
