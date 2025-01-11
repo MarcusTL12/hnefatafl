@@ -283,11 +283,11 @@ impl GameState {
                 }
 
                 Event::Key(KeyEvent {
-                    code: KeyCode::Enter,
+                    code: KeyCode::Char(c),
                     modifiers: KeyModifiers::NONE,
                     kind: KeyEventKind::Press,
                     state: _,
-                }) => {
+                }) if ('0'..='3').contains(&c) => {
                     self.render();
                     execute!(
                         self.out,
@@ -297,7 +297,9 @@ impl GameState {
                     println!("Computing best move:");
                     let t = Instant::now();
 
-                    let best_move = self.board.best_move(self.turn, 3);
+                    let best_move = self
+                        .board
+                        .best_move(self.turn, (c as u8 - b'0') as u32);
 
                     let t = t.elapsed();
 
