@@ -197,7 +197,7 @@ impl BoardState {
         self.set(to_linind([y, x]).unwrap(), val)
     }
 
-    pub fn empties(self) -> BitArray<M> {
+    pub fn _empties(self) -> BitArray<M> {
         !self.0[0] & !self.0[1]
     }
 
