@@ -197,6 +197,25 @@ impl BoardState {
         self.set(to_linind([y, x]).unwrap(), val)
     }
 
+    pub fn empties(self) -> BitArray<M> {
+        !self.0[0] & !self.0[1]
+    }
+
+    pub fn whites(self) -> BitArray<M> {
+        self.0[0]
+    }
+
+    pub fn blacks(self) -> BitArray<M> {
+        !self.0[0] & self.0[1]
+    }
+
+    pub fn select_faction(self, turn: Faction) -> BitArray<M> {
+        match turn {
+            Faction::Black => self.blacks(),
+            Faction::White => self.whites(),
+        }
+    }
+
     fn render(
         &self,
         f: &mut std::fmt::Formatter<'_>,

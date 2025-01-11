@@ -1,29 +1,17 @@
 use ahash::RandomState;
 use hashbrown::HashMap;
 
-use crate::board::{BoardState, Faction, Piece, W};
+use crate::board::{BoardState, Faction, W};
 
 impl BoardState {
     pub fn all_moves(
         &self,
         turn: Faction,
     ) -> impl Iterator<Item = [[u16; 2]; 2]> {
-        self.0[0]
-            .into_iter()
-            .zip(self.0[1])
-            .map(|(a, b)| Piece::from([a, b]))
-            .take(121)
-            .array_chunks::<11>()
-            .enumerate()
-            .flat_map(|(i, row)| {
-                row.into_iter()
-                    .enumerate()
-                    .map(move |(j, x)| ([i as u16, j as u16], x))
-            })
-            .filter_map(move |(coord, x)| {
-                (x.try_into() == Ok(turn))
-                    .then_some((coord, self.moves_from(coord)))
-            })
+        self.select_faction(turn)
+            .trues_iter()
+            .map(|i| [(i / W) as u16, (i % W) as u16])
+            .map(|coord| (coord, self.moves_from(coord)))
             .flat_map(|(from, legal_moves)| {
                 legal_moves
                     .trues_iter()
@@ -33,17 +21,7 @@ impl BoardState {
     }
 
     fn zeroeval(self) -> f64 {
-        self.0[0]
-            .into_iter()
-            .zip(self.0[1])
-            .map(|(a, b)| Piece::from([a, b]))
-            .take(121)
-            .map(|x| match x.try_into() {
-                Ok(Faction::White) => 1.0,
-                Ok(Faction::Black) => -1.0,
-                _ => 0.0,
-            })
-            .sum()
+        self.whites().count_ones() as f64 - self.blacks().count_ones() as f64
     }
 
     // Naive minimax

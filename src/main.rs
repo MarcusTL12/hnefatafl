@@ -1,10 +1,9 @@
 #![feature(iter_array_chunks)]
 
-use std::{env, time::Instant};
+use std::env;
 
-use board::{BoardState, Faction};
+use board::{BoardState, HighlightedBoardState, TOWERS};
 use game::GameState;
-use hashbrown::HashMap;
 
 mod board;
 mod bot;
@@ -31,15 +30,7 @@ fn main() {
 
             let board = BoardState::standard_setup();
 
-            println!("{board}");
-
-            let n: u32 = args.next().map(|x| x.parse().unwrap()).unwrap_or(0);
-
-            let t = Instant::now();
-            let m = board.best_move(Faction::Black, n, &mut HashMap::default());
-            let t = t.elapsed();
-
-            println!("Best move: {m:?}, took: {t:.2?}");
+            println!("{}", HighlightedBoardState(board, TOWERS));
         }
         _ => {
             let mut game = GameState::new();
