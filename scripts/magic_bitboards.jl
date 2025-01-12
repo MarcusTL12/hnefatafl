@@ -16,7 +16,7 @@ function make_possible_moves_mask(i, j)
 
     moves &= ~(UInt128(1) << to2d(i, j))
 
-    moves & ~tower_bits
+    moves
 end
 
 function bitmap_to_u128(m)
@@ -92,7 +92,7 @@ function make_actual_moves(i, j, n)
         m |= bit
     end
 
-    m & ~tower_bits
+    m
 end
 
 function obstruction_to_ind(obstruction, multiplier)
