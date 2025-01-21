@@ -19,6 +19,18 @@ function make_possible_moves_mask(i, j)
     moves
 end
 
+function make_vertical_moves_mask(i)
+    moves = UInt128(0)
+
+    for k in 0:10
+        moves |= UInt128(1) << (k * 11)
+    end
+
+    moves &= ~(UInt128(1) << (i * 11))
+
+    moves
+end
+
 function bitmap_to_u128(m)
     reinterpret(UInt128, m.chunks)[1]
 end
@@ -95,6 +107,36 @@ function make_actual_moves(i, j, n)
     m
 end
 
+function make_actual_vertical_moves(i, n)
+    mask = make_vertical_moves_mask(i)
+
+    obstructions = make_obstructor(mask, n)
+
+    m = UInt128(0)
+
+    for k in i+1:10
+        bit = UInt128(1) << (k * 11)
+
+        if obstructions & bit != 0
+            break
+        end
+
+        m |= bit
+    end
+
+    for k in i-1:-1:0
+        bit = UInt128(1) << (k * 11)
+
+        if obstructions & bit != 0
+            break
+        end
+
+        m |= bit
+    end
+
+    m
+end
+
 function obstruction_to_ind(obstruction, multiplier)
     unsafe_trunc(UInt64, (obstruction * multiplier) >> 64)
 end
@@ -104,7 +146,7 @@ function look_for_collisions(lookup, moves, unshifted_inds)
     best_s = 65
     best_n = 0
 
-    for s in 39:64
+    for s in 53:64
         empty!(lookup)
 
         working = true
@@ -190,3 +232,55 @@ function look_for_magic_number(i, j, n_trials, best_cap=typemax(UInt64))
         end
     end
 end
+
+function look_for_vertical_magic_number(i, n_trials, best_cap=typemax(UInt64))
+    mask = make_vertical_moves_mask(i)
+
+    cap = count_ones(mask)
+
+    obstructors = [make_obstructor(mask, n) for n in 0:2^cap-1]
+    moves = [make_actual_vertical_moves(i, n) for n in 0:2^cap-1]
+
+    best_c = Threads.Atomic{UInt64}(best_cap)
+
+    nth = Threads.nthreads()
+
+    history = [Tuple{UInt128,Int,UInt64,Int}[] for _ in 1:nth]
+
+    Threads.@threads for id in 1:nth
+        lookup = Dict{UInt64,UInt128}()
+        ind_buf = UInt64[]
+
+        for _ in id:nth:n_trials
+            m = rand(UInt128)
+
+            s, c, n = test_magic_number(lookup, ind_buf, obstructors, moves, m)
+
+            if c < best_c[]
+                size_mb = 16 * c / 1024
+                efficiency = (n / c) * 100
+
+                println("Found new m = $m, s = $s")
+                println("    size = $size_mb kiB")
+                @printf "    efficiency = %.2f %c\n\n" efficiency '%'
+
+                Threads.atomic_min!(best_c, c)
+
+                push!(history[id], (m, s, c, n))
+            end
+        end
+    end
+
+    for h in history
+        for (m, s, c, n) in h
+            if c == best_c[]
+                return (m, s, c, n)
+            end
+        end
+    end
+end
+
+# Scoreboard vertical:
+# 0 => 0x6959c0a87337b98a3280e954c643fffa, 53, 31.98 kiB
+# 1 => 0x8ac2c6ac5ff8b3a205895dbd66edf2f2, 52, 63.82 kiB
+# 2 => 0xcc6e9ef26d45849721973490dad8b3be, 52, 63.84 kiB
