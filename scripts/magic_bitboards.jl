@@ -146,13 +146,13 @@ function look_for_collisions(lookup, moves, unshifted_inds)
     best_s = 65
     best_n = 0
 
-    for s in 53:64
+    for s in 0:64
         empty!(lookup)
 
         working = true
 
         for (m, ui) in zip(moves, unshifted_inds)
-            i = ui >> s
+            i = (ui >> s) & 0b111_1111_1111
 
             if !haskey(lookup, i)
                 lookup[i] = m
@@ -169,8 +169,8 @@ function look_for_collisions(lookup, moves, unshifted_inds)
                 best_s = s
                 best_n = length(lookup)
             end
-        else
-            break
+        # else
+        #     break
         end
     end
 
@@ -281,6 +281,6 @@ function look_for_vertical_magic_number(i, n_trials, best_cap=typemax(UInt64))
 end
 
 # Scoreboard vertical:
-# 0 => 0x6959c0a87337b98a3280e954c643fffa, 53, 31.98 kiB
+# 0 => 0x260cd366bff7bfa0001986996c81fff7, 41, 11 bit, 31.98 kiB
 # 1 => 0x8ac2c6ac5ff8b3a205895dbd66edf2f2, 52, 63.82 kiB
 # 2 => 0xcc6e9ef26d45849721973490dad8b3be, 52, 63.84 kiB
