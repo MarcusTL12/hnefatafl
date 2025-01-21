@@ -291,7 +291,7 @@ function look_for_magic_number(i, j, n_trials, best_cap=typemax(UInt64))
     end
 end
 
-function look_for_vertical_magic_number(i, n_trials, best_cap=typemax(UInt64))
+function look_for_vertical_magic_number(i, bitmask, n_trials, best_cap=typemax(UInt64))
     mask = make_vertical_moves_mask(i)
 
     cap = count_ones(mask)
@@ -312,11 +312,11 @@ function look_for_vertical_magic_number(i, n_trials, best_cap=typemax(UInt64))
         for _ in id:nth:n_trials
             m = rand(UInt128)
 
-            s, c, n = test_magic_number(lookup, ind_buf, obstructors, moves, m, 0b1111_1111_1111)
+            s, c, n = test_magic_number(lookup, ind_buf, obstructors, moves, m, bitmask)
 
             if c < best_c[]
-                size_mb = 16 * c / 1024
-                efficiency = (n / c) * 100
+                size_mb = 16 * (c + 1) / 1024
+                efficiency = (n / (c + 1)) * 100
 
                 println("Found new m = $m, s = $s")
                 println("    size = $size_mb kiB")
@@ -332,16 +332,24 @@ function look_for_vertical_magic_number(i, n_trials, best_cap=typemax(UInt64))
     for h in history
         for (m, s, c, n) in h
             if c == best_c[]
-                return (m, s, c, n)
+                return (m, s, Int(c + 1) * 16 / 1024, n)
             end
         end
     end
 end
 
 # Scoreboard vertical:
-# 0 => 0x260cd366bff7bfa0001986996c81fff7, 41, 11 bit, 31.98 kiB
-# 1 => 0x8ac2c6ac5ff8b3a205895dbd66edf2f2, 52, 63.82 kiB
-# 2 => 0xcc6e9ef26d45849721973490dad8b3be, 52, 63.84 kiB
+#  0 => 0x260cd366bff7bfa0001986996c81fff7, 41, 11 bit, 31.98 kiB
+#  1 => 0xc286186d1f485cfcefa06c16766e28e4, 37, 12 bit, 63.82 kiB
+#  2 => 0x034e85551b77bd36e10e3fc06451ccb5, 39, 12 bit, 63.84 kiB
+#  3 => 0xfd216858c8fdbe5c123f6178eb812f90, 39, 12 bit, 63.78 kiB
+#  4 => 0x6713254cf439424ab8f812b4d59a009e, 36, 12 bit, 63.88 kiB
+#  5 => 0x7e79d26f61b4fa51e6dd119fe5162958, 38, 12 bit, 63.91 kiB
+#  6 => 0xb7c14fde474c01ce4792f8f4141094fc, 37, 12 bit, 63.86 kiB
+#  7 => 0xdef3e227db21f66a367630ff83b33ec5, 40, 12 bit, 63.83 kiB
+#  8 => 0xa580f97b505d5753421b5e4a403c29f8, 38, 12 bit, 63.94 kiB
+#  9 => 0xddcd03fb2c8be68eaf1e30257b9db83f, 35, 12 bit, 63.92 kiB
+# 10 => 0xbbcc2dd321f5c278990ec2886b804766, 25, 12 bit, 63.86 kiB
 
 function look_for_up_magic_number(i, bitmask, n_trials, best_cap=typemax(UInt64))
     mask = make_up_moves_mask(i)
