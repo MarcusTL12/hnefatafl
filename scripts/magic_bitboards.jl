@@ -31,6 +31,26 @@ function make_vertical_moves_mask(i)
     moves
 end
 
+function make_up_moves_mask(i)
+    moves = UInt128(0)
+
+    for k in 0:i-1
+        moves |= UInt128(1) << (k * 11)
+    end
+
+    moves
+end
+
+function make_down_moves_mask(i)
+    moves = UInt128(0)
+
+    for k in i+1:10
+        moves |= UInt128(1) << (k * 11)
+    end
+
+    moves
+end
+
 function bitmap_to_u128(m)
     reinterpret(UInt128, m.chunks)[1]
 end
@@ -137,11 +157,51 @@ function make_actual_vertical_moves(i, n)
     m
 end
 
+function make_actual_up_moves(i, n)
+    mask = make_vertical_moves_mask(i)
+
+    obstructions = make_obstructor(mask, n)
+
+    m = UInt128(0)
+
+    for k in i-1:-1:0
+        bit = UInt128(1) << (k * 11)
+
+        if obstructions & bit != 0
+            break
+        end
+
+        m |= bit
+    end
+
+    m
+end
+
+function make_actual_down_moves(i, n)
+    mask = make_vertical_moves_mask(i)
+
+    obstructions = make_obstructor(mask, n)
+
+    m = UInt128(0)
+
+    for k in i+1:10
+        bit = UInt128(1) << (k * 11)
+
+        if obstructions & bit != 0
+            break
+        end
+
+        m |= bit
+    end
+
+    m
+end
+
 function obstruction_to_ind(obstruction, multiplier)
     unsafe_trunc(UInt64, (obstruction * multiplier) >> 64)
 end
 
-function look_for_collisions(lookup, moves, unshifted_inds)
+function look_for_collisions(lookup, moves, unshifted_inds, bitmask)
     best_cap = typemax(UInt64)
     best_s = 65
     best_n = 0
@@ -152,7 +212,7 @@ function look_for_collisions(lookup, moves, unshifted_inds)
         working = true
 
         for (m, ui) in zip(moves, unshifted_inds)
-            i = (ui >> s) & 0b111_1111_1111
+            i = (ui >> s) & bitmask
 
             if !haskey(lookup, i)
                 lookup[i] = m
@@ -169,21 +229,19 @@ function look_for_collisions(lookup, moves, unshifted_inds)
                 best_s = s
                 best_n = length(lookup)
             end
-        # else
-        #     break
         end
     end
 
     (best_s, best_cap, best_n)
 end
 
-function test_magic_number(lookup, ind_buf, obstructors, moves, multiplier)
+function test_magic_number(lookup, ind_buf, obstructors, moves, multiplier, bitmask)
     empty!(ind_buf)
     for o in obstructors
         push!(ind_buf, obstruction_to_ind(o, multiplier))
     end
 
-    look_for_collisions(lookup, moves, ind_buf)
+    look_for_collisions(lookup, moves, ind_buf, bitmask)
 end
 
 function look_for_magic_number(i, j, n_trials, best_cap=typemax(UInt64))
@@ -207,7 +265,7 @@ function look_for_magic_number(i, j, n_trials, best_cap=typemax(UInt64))
         for _ in id:nth:n_trials
             m = rand(UInt128)
 
-            s, c, n = test_magic_number(lookup, ind_buf, obstructors, moves, m)
+            s, c, n = test_magic_number(lookup, ind_buf, obstructors, moves, m, ~UInt64(0))
 
             if c < best_c[]
                 size_mb = 16 * c / 1024^2
@@ -254,7 +312,7 @@ function look_for_vertical_magic_number(i, n_trials, best_cap=typemax(UInt64))
         for _ in id:nth:n_trials
             m = rand(UInt128)
 
-            s, c, n = test_magic_number(lookup, ind_buf, obstructors, moves, m)
+            s, c, n = test_magic_number(lookup, ind_buf, obstructors, moves, m, 0b1111_1111_1111)
 
             if c < best_c[]
                 size_mb = 16 * c / 1024
@@ -284,3 +342,63 @@ end
 # 0 => 0x260cd366bff7bfa0001986996c81fff7, 41, 11 bit, 31.98 kiB
 # 1 => 0x8ac2c6ac5ff8b3a205895dbd66edf2f2, 52, 63.82 kiB
 # 2 => 0xcc6e9ef26d45849721973490dad8b3be, 52, 63.84 kiB
+
+function look_for_up_magic_number(i, bitmask, n_trials, best_cap=typemax(UInt64))
+    mask = make_up_moves_mask(i)
+
+    cap = count_ones(mask)
+
+    obstructors = [make_obstructor(mask, n) for n in 0:2^cap-1]
+    moves = [make_actual_up_moves(i, n) for n in 0:2^cap-1]
+
+    best_c = Threads.Atomic{UInt64}(best_cap)
+
+    nth = Threads.nthreads()
+
+    history = [Tuple{UInt128,Int,UInt64,Int}[] for _ in 1:nth]
+
+    Threads.@threads for id in 1:nth
+        lookup = Dict{UInt64,UInt128}()
+        ind_buf = UInt64[]
+
+        for _ in id:nth:n_trials
+            m = rand(UInt128)
+
+            s, c, n = test_magic_number(lookup, ind_buf, obstructors, moves, m, bitmask)
+
+            if c < best_c[]
+                size_b = 16 * (c + 1)
+                efficiency = (n / (c + 1)) * 100
+
+                println("Found new m = $m, s = $s")
+                println("    size = $size_b Bytes")
+                @printf "    efficiency = %.2f %c\n\n" efficiency '%'
+
+                Threads.atomic_min!(best_c, c)
+
+                push!(history[id], (m, s, c, n))
+            end
+        end
+    end
+
+    for h in history
+        for (m, s, c, n) in h
+            if c == best_c[]
+                return (m, s, Int(c + 1) * 16, n)
+            end
+        end
+    end
+end
+
+# Scoreboard "up":
+# 0 => none
+# 1 => obstructor directly
+# 2 => 0xbd1bc995c9666c4a629358503bb6f0b5, s = 1,  bits = 2,   64 bytes
+# 3 => 0xe382a155ebb143971528d4fb931aa092, s = 5,  bits = 3,  112 bytes
+# 4 => 0x16ff9c973fccd1ab255dfa8dba7fad61, s = 27, bits = 3,  128 bytes
+# 5 => 0x294907387ff05d85f8d50d3cbf0dd731, s = 23, bits = 4,  256 bytes
+# 6 => 0x4314b658f05851ff9fff3fbf3554309f, s = 4,  bits = 5,  512 bytes
+# 7 => 0x168c5f7ff1101f3694f5d699dadaae23, s = 33, bits = 6, 1024 bytes
+# 8 =>
+# 9 =>
+# 10 =>
