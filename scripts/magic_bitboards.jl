@@ -348,7 +348,7 @@ end
 #  6 => 0xa634d2305654600820312cc6083ea3c1, 36, 11 bit, 31.98 kiB
 #  7 => 0x3d4f0e3637a1ab59743b9d175dd17146, 37, 11 bit, 31.97 kiB
 #  8 => 0x3ffffdce3302cbe38c3a774923ac102a, 45, 11 bit, 32.00 kiB
-#  9 => 0xd7a07ffff3fe9864cd20b66759dc33af, 37, 11 bit, 31.97 kiB
+#  9 => 0xd7a07ffff3fe9864cd20b66759dc33af, 36, 11 bit, 31.97 kiB
 # 10 => 0x8c75aa6fffff7054d657ad968981caaf, 25, 11 bit, 32.00 kiB
 
 function look_for_up_magic_number(i, bitmask, n_trials, best_cap=typemax(UInt64))
