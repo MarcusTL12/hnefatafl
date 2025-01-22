@@ -339,8 +339,8 @@ function look_for_vertical_magic_number(i, bitmask, n_trials, best_cap=typemax(U
 end
 
 # Scoreboard vertical:
-#  0 => 0x260cd366bff7bfa0001986996c81fff7, 41, 11 bit, 31.98 kiB
-#  1 => 0x61bdeabaca57bd730da846f7ae7cffe0, 41, 11 bit, 32.00 kiB
+#  0 => 0x501e1970a031effc2a07048e4fdb9fff, 37, 10 bit, 16.00 kiB
+#  1 => 0x751bfde58826f7fdffaffbbfdff77fff, 37, 10 bit, 16.00 kiB
 #  2 => 0xe6b549c3fedd20881249c426dea4b90a, 37, 11 bit, 31.98 kiB
 #  3 => 0x2ae249b8c9983da0cdffe930c6c00b32, 38, 11 bit, 31.98 kiB
 #  4 => 0xf9e9accbfff623354b06ca7bfff9542f, 37, 11 bit, 31.97 kiB
