@@ -163,7 +163,7 @@ fn main() {
 
             if let Some((m, s, k)) = ans {
                 println!(
-                    "Found magic number after {k} trials:
+                    "Found magic number for index {i} after {k} trials:
         m = 0x{m:x}, s = {s}"
                 );
             } else {
