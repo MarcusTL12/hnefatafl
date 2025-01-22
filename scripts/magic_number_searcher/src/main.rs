@@ -167,7 +167,7 @@ fn main() {
     m = 0x{m:x}, s = {s}"
                 );
             } else {
-                println!("Did not find working magic number!");
+                println!("Did not find {bits} bit magic number for index {i}");
             }
 
             println!("Time elapsed: {t:.2?}");
