@@ -145,7 +145,7 @@ fn main() {
             let moves = make_all_moves(i);
 
             let f = match bits {
-                10 => test_magic_number::<0b111_1111_1111, 1024>,
+                10 => test_magic_number::<0b11_1111_1111, 1024>,
                 11 => test_magic_number::<0b111_1111_1111, 2048>,
                 12 => test_magic_number::<0b1111_1111_1111, 4096>,
                 _ => unimplemented!(),
