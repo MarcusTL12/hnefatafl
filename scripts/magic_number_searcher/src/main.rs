@@ -112,6 +112,21 @@ fn test_magic_number<const BITMASK: usize, const NCOMBS: usize>(
     None
 }
 
+fn make_tester_function(
+    bits: u8,
+) -> for<'a, 'b> fn(
+    &'a [u128; 1024],
+    &'b [u128; 1024],
+    u128,
+) -> std::option::Option<u32> {
+    match bits {
+        10 => test_magic_number::<0b11_1111_1111, 1024>,
+        11 => test_magic_number::<0b111_1111_1111, 2048>,
+        12 => test_magic_number::<0b1111_1111_1111, 4096>,
+        _ => unimplemented!(),
+    }
+}
+
 fn main() {
     let mut args = args();
     args.next();
@@ -119,18 +134,17 @@ fn main() {
     let command = args.next().unwrap();
 
     match command.as_str() {
-        "check-11" => {
+        "check" => {
+            let bits: u8 = args.next().unwrap().parse().unwrap();
             let i = args.next().unwrap().parse().unwrap();
             let m = u128::from_str_radix(&args.next().unwrap(), 16).unwrap();
 
             let obstructors = make_all_obstructors(i);
             let moves = make_all_moves(i);
 
-            if let Some(s) = test_magic_number::<0b111_1111_1111, 2048>(
-                &obstructors,
-                &moves,
-                m,
-            ) {
+            let f = make_tester_function(bits);
+
+            if let Some(s) = f(&obstructors, &moves, m) {
                 println!("Number is magic with s = {s}");
             } else {
                 println!("Number is not magic");
@@ -144,12 +158,7 @@ fn main() {
             let obstructors = make_all_obstructors(i);
             let moves = make_all_moves(i);
 
-            let f = match bits {
-                10 => test_magic_number::<0b11_1111_1111, 1024>,
-                11 => test_magic_number::<0b111_1111_1111, 2048>,
-                12 => test_magic_number::<0b1111_1111_1111, 4096>,
-                _ => unimplemented!(),
-            };
+            let f = make_tester_function(bits);
 
             let t = Instant::now();
 
