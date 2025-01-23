@@ -339,17 +339,17 @@ function look_for_vertical_magic_number(i, bitmask, n_trials, best_cap=typemax(U
 end
 
 # Scoreboard vertical:
-#  0 => 0x501e1970a031effc2a07048e4fdb9fff, 37, 10 bit, 16.00 kiB
-#  1 => 0x751bfde58826f7fdffaffbbfdff77fff, 37, 10 bit, 16.00 kiB
-#  2 => 0xe6b549c3fedd20881249c426dea4b90a, 37, 11 bit, 31.98 kiB
-#  3 => 0x2ae249b8c9983da0cdffe930c6c00b32, 38, 11 bit, 31.98 kiB
-#  4 => 0xf9e9accbfff623354b06ca7bfff9542f, 37, 11 bit, 31.97 kiB
-#  5 => 0xc068f9868341f917eda8040f97dac16c, 38, 11 bit, 31.97 kiB
-#  6 => 0xa634d2305654600820312cc6083ea3c1, 36, 11 bit, 31.98 kiB
-#  7 => 0x3d4f0e3637a1ab59743b9d175dd17146, 37, 11 bit, 31.97 kiB
-#  8 => 0x3ffffdce3302cbe38c3a774923ac102a, 45, 11 bit, 32.00 kiB
-#  9 => 0xd7a07ffff3fe9864cd20b66759dc33af, 36, 11 bit, 31.97 kiB
-# 10 => 0x76d837fff936da3d90a3a7af54efb580, 33, 10 bit, 16.00 kiB
+#  0 => 0x501e1970a031effc2a07048e4fdb9fff, 37, 10 bit
+#  1 => 0x751bfde58826f7fdffaffbbfdff77fff, 37, 10 bit
+#  2 => 0xa04c5c46b05e0d6b298eeb8e10c1effe, 38, 10 bit
+#  3 => 0x2ae249b8c9983da0cdffe930c6c00b32, 38, 11 bit
+#  4 => 0xf9e9accbfff623354b06ca7bfff9542f, 37, 11 bit
+#  5 => 0xc068f9868341f917eda8040f97dac16c, 38, 11 bit
+#  6 => 0xa634d2305654600820312cc6083ea3c1, 36, 11 bit
+#  7 => 0x3d4f0e3637a1ab59743b9d175dd17146, 37, 11 bit
+#  8 => 0x3ffffdce3302cbe38c3a774923ac102a, 45, 11 bit
+#  9 => 0xa2227ffd6fb1f5d0112bada224aad389, 37, 10 bit
+# 10 => 0x76d837fff936da3d90a3a7af54efb580, 33, 10 bit
 
 function look_for_up_magic_number(i, bitmask, n_trials, best_cap=typemax(UInt64))
     mask = make_up_moves_mask(i)
