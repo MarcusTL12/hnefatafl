@@ -347,7 +347,7 @@ end
 #  5 => 0xc068f9868341f917eda8040f97dac16c, 38, 11 bit
 #  6 => 0xa634d2305654600820312cc6083ea3c1, 36, 11 bit
 #  7 => 0x3d4f0e3637a1ab59743b9d175dd17146, 37, 11 bit
-#  8 => 0x3ffffdce3302cbe38c3a774923ac102a, 45, 11 bit
+#  8 => 0x9eafffde40e34b972146f8fffa64e154, 39, 10 bit
 #  9 => 0xa2227ffd6fb1f5d0112bada224aad389, 37, 10 bit
 # 10 => 0x76d837fff936da3d90a3a7af54efb580, 33, 10 bit
 
