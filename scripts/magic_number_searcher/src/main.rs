@@ -120,6 +120,7 @@ fn make_tester_function(
     u128,
 ) -> std::option::Option<u32> {
     match bits {
+        9 => test_magic_number::<0b1_1111_1111, 512>,
         10 => test_magic_number::<0b11_1111_1111, 1024>,
         11 => test_magic_number::<0b111_1111_1111, 2048>,
         12 => test_magic_number::<0b1111_1111_1111, 4096>,
