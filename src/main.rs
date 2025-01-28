@@ -8,6 +8,7 @@ use game::GameState;
 mod board;
 mod bot;
 mod game;
+mod magic_bitboards;
 
 fn main() {
     let mut args = env::args();

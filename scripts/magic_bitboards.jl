@@ -351,6 +351,59 @@ end
 #  9 => 0xa2227ffd6fb1f5d0112bada224aad389, 37, 10 bit
 # 10 => 0x76d837fff936da3d90a3a7af54efb580, 33, 10 bit
 
+magic_numbers = [
+    0x501e1970a031effc2a07048e4fdb9fff
+    0x751bfde58826f7fdffaffbbfdff77fff
+    0xa04c5c46b05e0d6b298eeb8e10c1effe
+    0x2ae249b8c9983da0cdffe930c6c00b32
+    0xf9e9accbfff623354b06ca7bfff9542f
+    0xc068f9868341f917eda8040f97dac16c
+    0xa634d2305654600820312cc6083ea3c1
+    0x3d4f0e3637a1ab59743b9d175dd17146
+    0x9eafffde40e34b972146f8fffa64e154
+    0xa2227ffd6fb1f5d0112bada224aad389
+    0x76d837fff936da3d90a3a7af54efb580
+]
+
+magic_shifts = [37, 37, 38, 38, 37, 38, 36, 37, 39, 37, 33]
+
+function populate_magic_lookup(i, bitmask, multiplier, s)
+    mask = make_vertical_moves_mask(i)
+
+    cap = count_ones(mask)
+
+    obstructors = [make_obstructor(mask, n) for n in 0:2^cap-1]
+    moves = [make_actual_vertical_moves(i, n) for n in 0:2^cap-1]
+
+    n_lookup = bitmask + 1
+
+    lookup = zeros(UInt128, n_lookup)
+
+    for (m, o) in zip(moves, obstructors)
+        i = (obstruction_to_ind(o, multiplier) >> s) & bitmask
+
+        lookup[begin+i] = m
+    end
+
+    lookup
+end
+
+function make_magic_lookup_file()
+    filename = "res/11bit_magic_numbers.dat"
+    bitmask = 0b111_1111_1111
+
+    lookup = UInt128[]
+
+    for i in 0:10
+        append!(lookup, populate_magic_lookup(i, bitmask,
+            magic_numbers[begin+1], magic_shifts[begin+i]))
+    end
+
+    open(filename, "w") do io
+        write(io, lookup)
+    end
+end
+
 function look_for_up_magic_number(i, bitmask, n_trials, best_cap=typemax(UInt64))
     mask = make_up_moves_mask(i)
 
