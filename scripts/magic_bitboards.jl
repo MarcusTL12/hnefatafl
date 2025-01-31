@@ -31,6 +31,18 @@ function make_vertical_moves_mask(i)
     moves
 end
 
+function make_horizontal_moves_mask(j)
+    moves = UInt128(0)
+
+    for k in 0:10
+        moves |= UInt128(1) << k
+    end
+
+    moves &= ~(UInt128(1) << j)
+
+    moves
+end
+
 function make_up_moves_mask(i)
     moves = UInt128(0)
 
@@ -148,6 +160,36 @@ function make_actual_vertical_moves(i, n)
         bit = UInt128(1) << (k * 11)
 
         if obstructions & bit != 0
+            break
+        end
+
+        m |= bit
+    end
+
+    m
+end
+
+function make_actual_horizontal_moves(j, n)
+    mask = make_horizontal_moves_mask(j)
+
+    obstructions = make_obstructor(mask, n)
+
+    m = UInt128(0)
+
+    for k in j+1:10
+        bit = UInt128(1) << k
+
+        if obstructions & bit != 0
+            break
+        end
+
+        m |= bit
+    end
+
+    for k in j-1:-1:0
+        bit = UInt128(1) << k
+
+        if (obstructions & bit) != 0
             break
         end
 
@@ -389,7 +431,7 @@ function populate_magic_lookup(i, bitmask, multiplier, s)
 end
 
 function make_magic_lookup_file()
-    filename = "res/11bit_magic_numbers.dat"
+    filename = "res/11bit_magic_lookup.dat"
     bitmask = 0b111_1111_1111
 
     lookup = UInt128[]
@@ -397,6 +439,40 @@ function make_magic_lookup_file()
     for i in 0:10
         append!(lookup, populate_magic_lookup(i, bitmask,
             magic_numbers[begin+1], magic_shifts[begin+i]))
+    end
+
+    open(filename, "w") do io
+        write(io, lookup)
+    end
+end
+
+function populate_horizontal_lookup(j)
+    mask = make_horizontal_moves_mask(j)
+
+    cap = count_ones(mask)
+
+    obstructors = [make_obstructor(mask, n) for n in 0:2^cap-1]
+    moves = [make_actual_horizontal_moves(j, n) for n in 0:2^cap-1]
+
+    n_lookup = 2^11
+
+    lookup = zeros(UInt16, n_lookup)
+
+    for (m, o) in zip(moves, obstructors)
+        i = Int(o)
+        lookup[begin+i] = UInt16(m)
+    end
+
+    lookup
+end
+
+function make_horizontal_lookup_file()
+    filename = "res/horizontal_lookup.dat"
+
+    lookup = UInt16[]
+
+    for j in 0:10
+        append!(lookup, populate_horizontal_lookup(j))
     end
 
     open(filename, "w") do io
